@@ -1,0 +1,9 @@
+{
+  "cpu_usage": 94,
+  "memory_usage": 71,
+  "process_name": "xmrig",
+  "process_runtime_seconds": 7200,
+  "network_destination": "minexmr.com",
+  "container_name": null,
+  "environment": "HOST"
+}

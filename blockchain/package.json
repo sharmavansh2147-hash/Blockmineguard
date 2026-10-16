@@ -1,0 +1,22 @@
+{
+  "name": "blockmineguard-blockchain",
+  "version": "1.0.0",
+  "description": "BlockMineGuard Smart Contracts",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy": "hardhat ignition deploy ./ignition/modules/ThreatRegistry.ts --network localhost",
+    "deploy:testnet": "hardhat ignition deploy ./ignition/modules/ThreatRegistry.ts --network sepolia",
+    "verify": "hardhat verify"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^0.15.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^18.0.5",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.4.0"
+  }
+}

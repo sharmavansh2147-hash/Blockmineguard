@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Local Ethereum blockchain (Hardhat)
+  hardhat:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    command: npx hardhat node --hostname 0.0.0.0
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./blockchain:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Deploy contracts after Hardhat starts
+  deploy:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        sleep 5 &&
+        npx hardhat ignition deploy ./ignition/modules/ThreatRegistry.ts --network localhost --json > /deploy-output.json &&
+        cat /deploy-output.json
+      "
+    depends_on:
+      hardhat:
+        condition: service_healthy
+    volumes:
+      - ./blockchain:/app
+      - /app/node_modules
+    environment:
+      - HARDHAT_NETWORK=localhost
+
+  # Python Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - BLOCKCHAIN_RPC_URL=http://hardhat:8545
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-}
+      - PRIVATE_KEY=${PRIVATE_KEY:-}
+      - DB_PATH=/data/blockmineguard.db
+      - FLASK_ENV=production
+    volumes:
+      - ./backend:/app
+      - backend-data:/data
+    depends_on:
+      hardhat:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # React Frontend (served by nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+
+volumes:
+  backend-data:

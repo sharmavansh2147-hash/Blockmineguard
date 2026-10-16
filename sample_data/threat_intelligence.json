@@ -1,0 +1,62 @@
+[
+  {
+    "indicator": "minexmr.com",
+    "indicator_type": "domain",
+    "description": "Known Monero mining pool domain",
+    "campaign_id": "CAMPAIGN-XMR-001"
+  },
+  {
+    "indicator": "supportxmr.com",
+    "indicator_type": "domain",
+    "description": "Monero mining pool with anonymous payments",
+    "campaign_id": "CAMPAIGN-XMR-001"
+  },
+  {
+    "indicator": "xmr.pool.minergate.com",
+    "indicator_type": "domain",
+    "description": "MinerGate Monero pool",
+    "campaign_id": "CAMPAIGN-XMR-002"
+  },
+  {
+    "indicator": "pool.minexmr.com:443",
+    "indicator_type": "url",
+    "description": "MineXMR pool stratum endpoint",
+    "campaign_id": "CAMPAIGN-XMR-001"
+  },
+  {
+    "indicator": "185.199.108.153",
+    "indicator_type": "ip",
+    "description": "IP associated with mining pool infrastructure",
+    "campaign_id": "CAMPAIGN-XMR-001"
+  },
+  {
+    "indicator": "xmrig",
+    "indicator_type": "process",
+    "description": "Popular Monero CPU miner",
+    "campaign_id": "CAMPAIGN-XMR-001"
+  },
+  {
+    "indicator": "cpuminer",
+    "indicator_type": "process",
+    "description": "Multi-threaded CPU miner for various algorithms",
+    "campaign_id": "CAMPAIGN-GENERIC-001"
+  },
+  {
+    "indicator": "ethminer",
+    "indicator_type": "process",
+    "description": "Ethereum GPU miner",
+    "campaign_id": "CAMPAIGN-ETH-001"
+  },
+  {
+    "indicator": "stratum+tcp://eth.f2pool.com:6688",
+    "indicator_type": "url",
+    "description": "F2Pool Ethereum stratum endpoint",
+    "campaign_id": "CAMPAIGN-ETH-001"
+  },
+  {
+    "indicator": "sha256:a1b2c3d4e5f6...",
+    "indicator_type": "hash",
+    "description": "Known malicious miner binary hash",
+    "campaign_id": "CAMPAIGN-XMR-003"
+  }
+]

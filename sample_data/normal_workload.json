@@ -1,0 +1,9 @@
+{
+  "cpu_usage": 45,
+  "memory_usage": 55,
+  "process_name": "nginx",
+  "process_runtime_seconds": 300,
+  "network_destination": "api.example.com",
+  "container_name": null,
+  "environment": "HOST"
+}
