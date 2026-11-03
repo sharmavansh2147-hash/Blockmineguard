@@ -17,7 +17,10 @@ api.interceptors.response.use(
       error.message ||
       'An error occurred';
 
-    return Promise.reject(new Error(message));
+    const enhancedError = new Error(message);
+    enhancedError.response = error.response;
+    enhancedError.status = error.response?.status;
+    return Promise.reject(enhancedError);
   }
 );
 
@@ -31,6 +34,9 @@ export const incidentsApi = {
   verify: (id, evidence) =>
     api.post(`/incidents/${id}/verify`, { evidence }),
 
+  computeHash: evidence =>
+    api.post('/evidence/hash', { evidence }),
+
   resolve: (id, resolution, notes) =>
     api.post(`/incidents/${id}/resolve`, { resolution, notes }),
 
@@ -38,6 +44,9 @@ export const incidentsApi = {
 
   addNote: (id, note, author) =>
     api.post(`/incidents/${id}/notes`, { note, author }),
+
+  updateBlockchain: (id, data) =>
+    api.post(`/incidents/${id}/blockchain`, data),
 };
 
 export const detectionApi = {
@@ -66,6 +75,11 @@ export const verificationApi = {
   getHistory: (limit = 20) => api.get('/verification/history', { params: { limit } }),
 };
 
+export const sampleDataApi = {
+  list: () => api.get('/sample-data'),
+  get: (name) => api.get(`/sample-data/${name}`),
+};
+
 export const researchApi = {
   getDetectorComparison: () => api.get('/detector/comparison'),
   getResponseEffectiveness: () => api.get('/response/effectiveness'),
@@ -78,6 +92,12 @@ export const researchApi = {
 
 export const statsApi = {
   getStats: () => api.get('/stats'),
+};
+
+export const blockchainApi = {
+  getNetworks: () => api.get('/blockchain/networks'),
+  verifySepolia: () => api.get('/blockchain/verify-sepolia'),
+  switchNetwork: (network) => api.post('/blockchain/switch-network', { network }),
 };
 
 export const healthApi = {
@@ -95,6 +115,10 @@ export const monitorApi = {
 export const reportsApi = {
   exportUrl: (format = 'csv') => `http://127.0.0.1:5001/reports/export?format=${format}`,
   getExport: (format = 'json') => api.get('/reports/export', { params: { format } }),
+};
+
+export const systemApi = {
+  getReadiness: () => api.get('/system/readiness', { timeout: 8000 }),
 };
 
 export const evaluationApi = {

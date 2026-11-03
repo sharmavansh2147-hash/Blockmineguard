@@ -134,6 +134,18 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_incidents_hash ON incidents(evidence_hash)
             """)
             cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_incidents_verification ON incidents(verification_status)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_incidents_timestamp ON incidents(timestamp DESC)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_incidents_created_at ON incidents(created_at DESC)
+            """)
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_threat_intel_indicator ON threat_intelligence(indicator)
             """)
             cursor.execute("""
@@ -268,6 +280,35 @@ class Database:
                 return self._row_to_incident(row)
             return None
 
+    def _build_incident_filter_query(
+        self,
+        severity: Optional[str] = None,
+        verification_status: Optional[str] = None,
+        resolution_status: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> tuple[str, List[Any]]:
+        where_clauses = ["1=1"]
+        params: List[Any] = []
+
+        if severity and severity.upper() != "ALL":
+            where_clauses.append("UPPER(severity) = ?")
+            params.append(severity.upper())
+
+        if verification_status and verification_status.upper() != "ALL":
+            where_clauses.append("UPPER(verification_status) = ?")
+            params.append(verification_status.upper())
+
+        if resolution_status and resolution_status.upper() != "ALL":
+            where_clauses.append("UPPER(resolution_status) = ?")
+            params.append(resolution_status.upper())
+
+        if search and search.strip():
+            where_clauses.append("(incident_id LIKE ? OR process_name LIKE ? OR network_destination LIKE ? OR external_id LIKE ?)")
+            term = f"%{search.strip()}%"
+            params.extend([term, term, term, term])
+
+        return " AND ".join(where_clauses), params
+
     def get_all_incidents(
         self,
         limit: int = 100,
@@ -277,27 +318,8 @@ class Database:
         resolution_status: Optional[str] = None,
         search: Optional[str] = None
     ) -> List[IncidentRecord]:
-        query = "SELECT * FROM incidents WHERE 1=1"
-        params: List[Any] = []
-
-        if severity and severity.upper() != "ALL":
-            query += " AND UPPER(severity) = ?"
-            params.append(severity.upper())
-
-        if verification_status and verification_status.upper() != "ALL":
-            query += " AND UPPER(verification_status) = ?"
-            params.append(verification_status.upper())
-
-        if resolution_status and resolution_status.upper() != "ALL":
-            query += " AND UPPER(resolution_status) = ?"
-            params.append(resolution_status.upper())
-
-        if search:
-            query += " AND (incident_id LIKE ? OR process_name LIKE ? OR network_destination LIKE ? OR external_id LIKE ?)"
-            term = f"%{search}%"
-            params.extend([term, term, term, term])
-
-        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        where_sql, params = self._build_incident_filter_query(severity, verification_status, resolution_status, search)
+        query = f"SELECT * FROM incidents WHERE {where_sql} ORDER BY created_at DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         with self._get_connection() as conn:
@@ -312,25 +334,8 @@ class Database:
         resolution_status: Optional[str] = None,
         search: Optional[str] = None
     ) -> int:
-        query = "SELECT COUNT(*) FROM incidents WHERE 1=1"
-        params: List[Any] = []
-
-        if severity and severity.upper() != "ALL":
-            query += " AND UPPER(severity) = ?"
-            params.append(severity.upper())
-
-        if verification_status and verification_status.upper() != "ALL":
-            query += " AND UPPER(verification_status) = ?"
-            params.append(verification_status.upper())
-
-        if resolution_status and resolution_status.upper() != "ALL":
-            query += " AND UPPER(resolution_status) = ?"
-            params.append(resolution_status.upper())
-
-        if search:
-            query += " AND (incident_id LIKE ? OR process_name LIKE ? OR network_destination LIKE ? OR external_id LIKE ?)"
-            term = f"%{search}%"
-            params.extend([term, term, term, term])
+        where_sql, params = self._build_incident_filter_query(severity, verification_status, resolution_status, search)
+        query = f"SELECT COUNT(*) FROM incidents WHERE {where_sql}"
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -370,14 +375,16 @@ class Database:
                 )
             conn.commit()
 
-    def update_incident_blockchain_id(self, incident_id: str, blockchain_id: int, tx_hash: str):
+    def update_incident_blockchain_id(self, incident_id: str, blockchain_id: int, tx_hash: Optional[str] = None):
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE incidents SET blockchain_incident_id = ?, blockchain_tx_hash = ?, updated_at = ? WHERE incident_id = ?",
+                "UPDATE incidents SET blockchain_incident_id = ?, blockchain_tx_hash = COALESCE(?, blockchain_tx_hash), updated_at = ? WHERE incident_id = ?",
                 (blockchain_id, tx_hash, datetime.now(timezone.utc).isoformat(), incident_id)
             )
             conn.commit()
+
+    update_incident_blockchain_info = update_incident_blockchain_id
 
     def create_threat_intel(self, intel: ThreatIntelRecord) -> int:
         with self._get_connection() as conn:
@@ -845,6 +852,34 @@ class Database:
     def save_verification_history(self, record: VerificationHistoryRecord) -> int:
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            # Deduplication: Prevent accidental duplicate logging for identical operations within 5s
+            cursor.execute("""
+                SELECT id, verification_outcome, computed_hash, stored_hash, on_chain_hash, verified_at
+                FROM verification_history
+                WHERE incident_id = ?
+                ORDER BY id DESC LIMIT 1
+            """, (record.incident_id,))
+            last_row = cursor.fetchone()
+            if last_row:
+                last_outcome = last_row["verification_outcome"]
+                last_comp = last_row["computed_hash"]
+                last_stored = last_row["stored_hash"]
+                last_chain = last_row["on_chain_hash"]
+                last_time = last_row["verified_at"]
+
+                if (last_outcome == record.verification_outcome and
+                    last_comp == record.computed_hash and
+                    last_stored == record.stored_hash and
+                    last_chain == record.on_chain_hash):
+                    try:
+                        from datetime import datetime
+                        t_last = datetime.fromisoformat(str(last_time).replace("Z", "+00:00"))
+                        t_now = datetime.fromisoformat(str(record.verified_at).replace("Z", "+00:00"))
+                        if abs((t_now - t_last).total_seconds()) < 5:
+                            return last_row["id"]
+                    except Exception:
+                        return last_row["id"]
+
             cursor.execute("""
                 INSERT INTO verification_history (
                     incident_id, verification_outcome, computed_hash, stored_hash,
@@ -875,4 +910,32 @@ class Database:
                     (limit,)
                 )
             rows = cursor.fetchall()
-            return [dict(r) for r in rows]
+            results = []
+            for r in rows:
+                row_dict = dict(r)
+                raw_ts = row_dict.get("verified_at") or row_dict.get("created_at")
+                norm_ts = None
+                if raw_ts:
+                    norm_ts = str(raw_ts).strip()
+                    if norm_ts and not ("T" in norm_ts and ("+" in norm_ts or "Z" in norm_ts)):
+                        try:
+                            from datetime import datetime, timezone
+                            parsed_dt = datetime.fromisoformat(norm_ts.replace(" ", "T"))
+                            if parsed_dt.tzinfo is None:
+                                parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
+                            norm_ts = parsed_dt.isoformat()
+                        except Exception:
+                            pass
+
+                raw_outcome = row_dict.get("verification_outcome", "")
+                canonical_outcome = raw_outcome
+                if raw_outcome == "VERIFIED_MATCH":
+                    canonical_outcome = "VERIFIED"
+
+                row_dict["timestamp"] = norm_ts
+                row_dict["verified_at"] = norm_ts
+                row_dict["outcome"] = canonical_outcome
+                row_dict["verification_outcome"] = canonical_outcome
+                row_dict["verified_by"] = row_dict.get("verifier_address") or "REST API / SOC"
+                results.append(row_dict)
+            return results

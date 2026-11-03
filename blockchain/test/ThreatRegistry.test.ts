@@ -217,6 +217,26 @@ describe("ThreatRegistry", function () {
             expect(incidentId).to.equal(1);
         });
 
+        it("Should get incident by external ID", async function () {
+            const { contract, reporter1 } = await loadFixture(deployFixture);
+            const evidenceHash = ethers.keccak256(ethers.toUtf8Bytes("test-evidence"));
+            await contract.connect(reporter1).reportIncident("INC-EXT-1001", evidenceHash, 2, "TI-REF-001");
+            const inc = await contract.getIncidentByExternalId("INC-EXT-1001");
+            expect(inc.incidentId).to.equal(1);
+            expect(inc.externalId).to.equal("INC-EXT-1001");
+            expect(inc.evidenceHash).to.equal(evidenceHash);
+        });
+
+        it("Should reject duplicate external ID", async function () {
+            const { contract, reporter1 } = await loadFixture(deployFixture);
+            const hash1 = ethers.keccak256(ethers.toUtf8Bytes("test-evidence-1"));
+            const hash2 = ethers.keccak256(ethers.toUtf8Bytes("test-evidence-2"));
+            await contract.connect(reporter1).reportIncident("INC-DUP-01", hash1, 2, "TI-REF-001");
+            await expect(
+                contract.connect(reporter1).reportIncident("INC-DUP-01", hash2, 1, "TI-REF-002")
+            ).to.be.revertedWith("External ID already registered");
+        });
+
         it("Should get incidents by reporter", async function () {
             const { contract, reporter1, reporter2 } = await loadFixture(deployFixture);
             const evidenceHash1 = ethers.keccak256(ethers.toUtf8Bytes("test-evidence-1"));

@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   RefreshCw,
-  ChevronDown,
-  Play,
-  Pause,
-  Zap,
-  Radio,
-  Timer
+  ChevronDown
 } from 'lucide-react';
 
 const REFRESH_INTERVALS = [
@@ -85,32 +80,22 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
 
   const isPaused = intervalSec === 0;
 
-  // Compute circular progress for the countdown ring
-  const progressRatio = intervalSec > 0 ? (countdown / intervalSec) : 0;
-  const radius = 10;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progressRatio);
-
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          background: 'rgba(15, 23, 42, 0.8)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
-          borderRadius: '30px',
-          padding: '4px 6px 4px 12px',
-          gap: '10px',
-          boxShadow: isPaused
-            ? '0 2px 8px rgba(0, 0, 0, 0.4)'
-            : '0 0 16px rgba(6, 182, 212, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(10px)',
-          transition: 'all 0.2s ease',
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '4px 8px 4px 10px',
+          gap: '8px',
+          boxShadow: 'var(--shadow-sm)',
           userSelect: 'none'
         }}
       >
-        {/* Animated Beacon & Mode Label */}
+        {/* Status Dot & Mode Label */}
         <div
           onClick={() => setMenuOpen(!menuOpen)}
           style={{
@@ -119,82 +104,58 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
             gap: '8px',
             cursor: 'pointer'
           }}
-          title="Click to change refresh speed"
+          title="Configure polling interval"
         >
-          {isPaused ? (
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: '#f59e0b',
-                boxShadow: '0 0 6px #f59e0b'
-              }}
-            />
-          ) : (
-            <div style={{ position: 'relative', width: 8, height: 8 }}>
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  background: '#10b981',
-                  animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
-                  opacity: 0.75
-                }}
-              />
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#10b981',
-                  boxShadow: '0 0 8px #10b981'
-                }}
-              />
-            </div>
-          )}
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: isPaused ? 'var(--warning)' : 'var(--success)',
+              flexShrink: 0
+            }}
+          />
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span
                 style={{
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
                   textTransform: 'uppercase',
-                  color: isPaused ? '#f59e0b' : '#34d399'
+                  letterSpacing: '0.04em',
+                  color: isPaused ? 'var(--warning)' : 'var(--text-primary)'
                 }}
               >
                 {isPaused ? 'Paused' : 'Live Stream'}
               </span>
               <span
                 style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  color: '#94a3b8',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  padding: '1px 6px',
-                  borderRadius: '10px'
+                  fontSize: '0.6875rem',
+                  fontFamily: 'monospace',
+                  color: 'var(--text-secondary)',
+                  background: 'var(--surface-elevated)',
+                  border: '1px solid var(--border)',
+                  padding: '1px 5px',
+                  borderRadius: 'var(--radius-sm)'
                 }}
               >
-                {isPaused ? 'Off' : `${intervalSec}s`}
+                {isPaused ? 'Manual' : `${intervalSec}s`}
               </span>
             </div>
             {lastUpdated && (
-              <span style={{ fontSize: '0.64rem', color: '#64748b', marginTop: '-1px' }}>
-                Updated {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              <span style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}
           </div>
 
           <ChevronDown
-            size={14}
+            size={12}
             style={{
-              color: '#94a3b8',
+              color: 'var(--text-secondary)',
               transform: menuOpen ? 'rotate(180deg)' : 'none',
-              transition: 'transform 0.2s ease',
+              transition: 'transform 0.15s ease',
               marginLeft: '2px'
             }}
           />
@@ -205,43 +166,43 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
           <div
             style={{
               position: 'relative',
-              width: 24,
-              height: 24,
+              width: 20,
+              height: 20,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}
-            title={`Next refresh in ${countdown}s`}
+            title={`Next poll in ${countdown}s`}
           >
-            <svg width="24" height="24" style={{ transform: 'rotate(-90deg)' }}>
+            <svg width="20" height="20" style={{ transform: 'rotate(-90deg)' }}>
               <circle
-                cx="12"
-                cy="12"
-                r={radius}
-                stroke="rgba(255, 255, 255, 0.1)"
-                strokeWidth="2.5"
+                cx="10"
+                cy="10"
+                r={8}
+                stroke="var(--border)"
+                strokeWidth="2"
                 fill="transparent"
               />
               <circle
-                cx="12"
-                cy="12"
-                r={radius}
-                stroke="#06b6d4"
-                strokeWidth="2.5"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
+                cx="10"
+                cy="10"
+                r={8}
+                stroke="var(--primary)"
+                strokeWidth="2"
                 fill="transparent"
-                style={{ transition: 'stroke-dashoffset 0.8s linear' }}
+                strokeDasharray={2 * Math.PI * 8}
+                strokeDashoffset={2 * Math.PI * 8 * (1 - (intervalSec > 0 ? countdown / intervalSec : 0))}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 0.9s linear' }}
               />
             </svg>
             <span
               style={{
                 position: 'absolute',
-                fontSize: '0.62rem',
-                fontWeight: 800,
-                color: '#38bdf8',
-                fontFamily: 'monospace'
+                fontSize: '0.5625rem',
+                fontFamily: 'monospace',
+                fontWeight: 600,
+                color: 'var(--text-secondary)'
               }}
             >
               {countdown}
@@ -249,27 +210,27 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
           </div>
         )}
 
-        {/* Manual Refresh Action Trigger Button */}
+        {/* Manual Refresh Button */}
         <button
           type="button"
           onClick={handleManualClick}
           style={{
-            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: '50%',
-            width: 28,
-            height: 28,
+            background: 'var(--surface-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)',
+            width: 24,
+            height: 24,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#38bdf8',
+            color: 'var(--text-primary)',
             cursor: 'pointer',
-            transition: 'all 0.15s ease'
+            padding: 0
           }}
-          title="Instant Manual Refresh"
+          title="Refresh now"
         >
           <RefreshCw
-            size={13}
+            size={12}
             style={{
               transform: isSpinning ? 'rotate(360deg)' : 'none',
               transition: isSpinning ? 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
@@ -283,32 +244,30 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 8px)',
+            top: 'calc(100% + 6px)',
             right: 0,
-            width: '240px',
-            background: 'rgba(15, 23, 42, 0.96)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            borderRadius: '14px',
-            padding: '8px',
-            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(6, 182, 212, 0.2)',
-            backdropFilter: 'blur(16px)',
-            zIndex: 1000,
-            animation: 'fadeIn 0.15s ease-out'
+            width: '230px',
+            background: 'var(--surface-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '6px',
+            boxShadow: 'var(--shadow-md)',
+            zIndex: 1000
           }}
         >
           <div
             style={{
-              padding: '6px 10px 8px',
-              fontSize: '0.68rem',
-              color: '#64748b',
-              fontWeight: 700,
+              padding: '4px 8px 6px',
+              fontSize: '0.625rem',
+              color: 'var(--text-secondary)',
+              fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+              borderBottom: '1px solid var(--border)',
               marginBottom: '4px'
             }}
           >
-            Telemetry Polling Frequency
+            Polling Frequency
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -323,22 +282,20 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    background: isSelected ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                    border: isSelected ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid transparent',
-                    color: isSelected ? '#38bdf8' : '#e2e8f0',
+                    padding: '6px 8px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: isSelected ? 'var(--surface-card)' : 'transparent',
+                    border: isSelected ? '1px solid var(--border)' : '1px solid transparent',
+                    color: isSelected ? 'var(--primary)' : 'var(--text-primary)',
                     cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.15s ease'
+                    textAlign: 'left'
                   }}
-                  className="refresh-interval-item"
                 >
                   <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: isSelected ? 700 : 500 }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: isSelected ? 600 : 500 }}>
                       {item.label}
                     </div>
-                    <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '1px' }}>
+                    <div style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
                       {item.desc}
                     </div>
                   </div>
@@ -349,8 +306,7 @@ export function LiveRefreshControl({ onRefresh, lastUpdated }) {
                         width: 6,
                         height: 6,
                         borderRadius: '50%',
-                        background: '#06b6d4',
-                        boxShadow: '0 0 6px #06b6d4'
+                        background: 'var(--primary)'
                       }}
                     />
                   )}

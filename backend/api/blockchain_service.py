@@ -1,6 +1,9 @@
 import json
 import os
-from typing import Optional, Dict, Any, List
+import re
+import urllib.request
+import urllib.error
+from typing import Optional, Dict, Any, List, Union
 from web3 import Web3
 try:
     from web3.middleware import ExtraDataToPOAMiddleware as PoAMiddleware
@@ -10,6 +13,28 @@ except ImportError:
     except ImportError:
         PoAMiddleware = None
 from eth_account import Account
+
+
+def sanitize_rpc_url(url: Optional[str]) -> str:
+    """Mask credentials or API keys in RPC URLs for safe display and logging."""
+    if not url:
+        return "NOT_CONFIGURED"
+    clean = str(url)
+    # Alchemy / Infura / QuickNode style /v2/<api_key> or /v3/<api_key>
+    clean = re.sub(r'(/v[23]/)[a-zA-Z0-9_-]+', r'\1[REDACTED]', clean)
+    # Query parameter style ?key=... or ?apiKey=... or ?token=...
+    clean = re.sub(r'([?&](?:apiKey|key|token|auth)=)[^&]+', r'\1[REDACTED]', clean)
+    # Basic auth style http://user:pass@host
+    clean = re.sub(r'//[^:@]+:[^@]+@', r'//[REDACTED]@', clean)
+    return clean
+
+
+def sanitize_error_message(err: Any) -> str:
+    """Sanitize error messages so raw API keys and URLs never appear in logs or responses."""
+    msg = str(err)
+    msg = re.sub(r'(/v[23]/)[a-zA-Z0-9_-]+', r'\1[REDACTED]', msg)
+    msg = re.sub(r'([?&](?:apiKey|key|token|auth)=)[^&]+', r'\1[REDACTED]', msg)
+    return msg
 
 
 class BlockchainService:
@@ -174,6 +199,38 @@ class BlockchainService:
                 "type": "function"
             },
             {
+                "inputs": [{"internalType": "string", "name": "externalId", "type": "string"}],
+                "name": "getIncidentByExternalId",
+                "outputs": [
+                    {
+                        "components": [
+                            {"internalType": "uint256", "name": "incidentId", "type": "uint256"},
+                            {"internalType": "string", "name": "externalId", "type": "string"},
+                            {"internalType": "bytes32", "name": "evidenceHash", "type": "bytes32"},
+                            {"internalType": "uint256", "name": "timestamp", "type": "uint256"},
+                            {"internalType": "uint8", "name": "severity", "type": "uint8"},
+                            {"internalType": "address", "name": "reporter", "type": "address"},
+                            {"internalType": "uint8", "name": "verificationStatus", "type": "uint8"},
+                            {"internalType": "uint8", "name": "resolutionStatus", "type": "uint8"},
+                            {"internalType": "string", "name": "threatIntelRef", "type": "string"},
+                            {"internalType": "bool", "name": "exists", "type": "bool"}
+                        ],
+                        "internalType": "struct ThreatRegistry.Incident",
+                        "name": "",
+                        "type": "tuple"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "string", "name": "externalId", "type": "string"}],
+                "name": "externalIdToIncidentId",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
                 "inputs": [{"internalType": "uint256", "name": "limit", "type": "uint256"}],
                 "name": "getRecentIncidents",
                 "outputs": [
@@ -234,7 +291,25 @@ class BlockchainService:
         ]
 
     def is_connected(self) -> bool:
-        return self.w3.is_connected()
+        connected = self.w3.is_connected()
+        if connected and self.contract_address and not self.contract:
+            try:
+                self.contract = self.w3.eth.contract(
+                    address=Web3.to_checksum_address(self.contract_address),
+                    abi=self.contract_abi
+                )
+            except Exception:
+                pass
+        return connected
+
+    @property
+    def chain_id(self) -> Optional[int]:
+        try:
+            if self.is_connected():
+                return int(self.w3.eth.chain_id)
+        except Exception:
+            pass
+        return None
 
     def set_contract_address(self, address: str):
         self.contract_address = address
@@ -243,6 +318,153 @@ class BlockchainService:
                 address=Web3.to_checksum_address(address),
                 abi=self.contract_abi
             )
+
+    def get_sanitized_rpc_url(self) -> str:
+        endpoint = getattr(getattr(self.w3, "provider", None), "endpoint_uri", None)
+        return sanitize_rpc_url(endpoint)
+
+    def switch_network(self, rpc_url: str, contract_address: Optional[str] = None,
+                       private_key: Optional[str] = None) -> bool:
+        """Switch active RPC endpoint and reinitialize Web3 connection."""
+        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if PoAMiddleware is not None:
+            try:
+                self.w3.middleware_onion.inject(PoAMiddleware, layer=0)
+            except Exception:
+                pass
+        self.contract_address = contract_address
+        self.private_key = private_key
+        self.account = Account.from_key(private_key) if private_key else None
+        self.contract = None
+
+        if contract_address and self.is_connected():
+            try:
+                self.contract = self.w3.eth.contract(
+                    address=Web3.to_checksum_address(contract_address),
+                    abi=self.contract_abi
+                )
+            except Exception:
+                pass
+        return self.is_connected()
+
+    @staticmethod
+    def verify_endpoint(rpc_url: str, expected_chain_id: int = 11155111, timeout_seconds: int = 6) -> Dict[str, Any]:
+        """
+        Safely test an RPC endpoint using eth_chainId and eth_blockNumber.
+        Ensures the secret API key is never printed or exposed in errors.
+        """
+        if not rpc_url or not rpc_url.strip():
+            return {
+                "success": False,
+                "chain_id": None,
+                "expected_chain_id": expected_chain_id,
+                "sanitized_url": "NOT_CONFIGURED",
+                "error": "RPC URL is empty or unconfigured."
+            }
+
+        sanitized_url = sanitize_rpc_url(rpc_url)
+        payload = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "eth_chainId",
+            "params": [],
+            "id": 1
+        }).encode("utf-8")
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "BlockMineGuard-Verifier/1.0"
+        }
+
+        try:
+            req = urllib.request.Request(rpc_url.strip(), data=payload, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+                status_code = resp.status
+                body = resp.read().decode("utf-8")
+                data = json.loads(body)
+
+            if "error" in data:
+                err_msg = data["error"].get("message", "Unknown RPC error")
+                return {
+                    "success": False,
+                    "chain_id": None,
+                    "expected_chain_id": expected_chain_id,
+                    "sanitized_url": sanitized_url,
+                    "http_status": status_code,
+                    "error": f"RPC Error: {sanitize_error_message(err_msg)}"
+                }
+
+            result_hex = data.get("result")
+            if not result_hex:
+                return {
+                    "success": False,
+                    "chain_id": None,
+                    "expected_chain_id": expected_chain_id,
+                    "sanitized_url": sanitized_url,
+                    "error": "No chain ID returned in RPC result."
+                }
+
+            chain_id = int(result_hex, 16)
+            is_match = (chain_id == expected_chain_id)
+
+            # Query block number as well for liveness verification
+            block_number = None
+            try:
+                block_payload = json.dumps({
+                    "jsonrpc": "2.0",
+                    "method": "eth_blockNumber",
+                    "params": [],
+                    "id": 2
+                }).encode("utf-8")
+                b_req = urllib.request.Request(rpc_url.strip(), data=block_payload, headers=headers, method="POST")
+                with urllib.request.urlopen(b_req, timeout=timeout_seconds) as b_resp:
+                    b_data = json.loads(b_resp.read().decode("utf-8"))
+                    if "result" in b_data:
+                        block_number = int(b_data["result"], 16)
+            except Exception:
+                pass
+
+            return {
+                "success": is_match,
+                "chain_id": chain_id,
+                "chain_id_hex": result_hex,
+                "expected_chain_id": expected_chain_id,
+                "block_number": block_number,
+                "sanitized_url": sanitized_url,
+                "http_status": status_code,
+                "network_name": "Ethereum Sepolia" if chain_id == 11155111 else ("Hardhat Local" if chain_id == 31337 else f"Chain {chain_id}"),
+                "message": (
+                    f"Successfully verified {sanitized_url} (Chain ID: {chain_id}, Block: #{block_number})"
+                    if is_match
+                    else f"Chain ID mismatch: expected {expected_chain_id}, but node returned {chain_id} ({result_hex})"
+                )
+            }
+
+        except urllib.error.HTTPError as http_err:
+            return {
+                "success": False,
+                "chain_id": None,
+                "expected_chain_id": expected_chain_id,
+                "sanitized_url": sanitized_url,
+                "http_status": http_err.code,
+                "error": f"HTTP Error {http_err.code}: {http_err.reason}"
+            }
+        except urllib.error.URLError as url_err:
+            return {
+                "success": False,
+                "chain_id": None,
+                "expected_chain_id": expected_chain_id,
+                "sanitized_url": sanitized_url,
+                "error": f"Network Connection Error: {sanitize_error_message(url_err.reason)}"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "chain_id": None,
+                "expected_chain_id": expected_chain_id,
+                "sanitized_url": sanitized_url,
+                "error": f"Verification failed: {sanitize_error_message(e)}"
+            }
 
     def _send_transaction(self, tx_func) -> Dict[str, Any]:
         if not self.account:
@@ -449,6 +671,29 @@ class BlockchainService:
             return self.contract.functions.getIncidentByHash(evidence_hash_bytes).call()
         except Exception:
             return None
+
+    def get_incident_by_external_id(self, external_id: str) -> Optional[Dict[str, Any]]:
+        if not self.contract:
+            raise ValueError("Contract not initialized")
+
+        try:
+            result = self.contract.functions.getIncidentByExternalId(external_id).call()
+            if result and result[-1]:
+                return {
+                    "incident_id": result[0],
+                    "external_id": result[1],
+                    "evidence_hash": result[2].hex() if isinstance(result[2], bytes) else result[2],
+                    "timestamp": result[3],
+                    "severity": result[4],
+                    "reporter": result[5],
+                    "verification_status": result[6],
+                    "resolution_status": result[7],
+                    "threat_intel_ref": result[8],
+                    "exists": result[9]
+                }
+        except Exception:
+            pass
+        return None
 
     def get_recent_incidents(self, limit: int = 10) -> List[Dict[str, Any]]:
         if not self.contract:

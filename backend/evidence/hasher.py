@@ -8,12 +8,21 @@ from evidence.evidence_generator import IncidentEvidence
 
 
 class EvidenceHasher:
+    SCHEMA_VERSION = "bmg-evidence-v1.0"
+    DETECTOR_VERSION = "v1.2.0"
+    SCORING_CONFIG_VERSION = "v1.0"
+    HASH_ALGORITHM = "SHA-256"
+
     @staticmethod
     def normalize_dict(data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Normalize dictionary keys (supporting both camelCase and snake_case)
         and standardize field types for deterministic canonical JSON.
+        Preserves schema and detector versioning if provided.
         """
+        if not isinstance(data, dict):
+            raise ValueError(f"Expected dictionary for evidence normalization, got {type(data).__name__}")
+
         key_map = {
             "incidentid": "incident_id",
             "incident_id": "incident_id",
@@ -34,12 +43,23 @@ class EvidenceHasher:
             "riskscore": "risk_score",
             "risk_score": "risk_score",
             "severity": "severity",
-            "factors": "factors"
+            "factors": "factors",
+            "schemaversion": "schema_version",
+            "schema_version": "schema_version",
+            "detectorversion": "detector_version",
+            "detector_version": "detector_version",
+            "scoringconfigversion": "scoring_config_version",
+            "scoring_config_version": "scoring_config_version",
+            "hashalgorithm": "hash_algorithm",
+            "hash_algorithm": "hash_algorithm"
         }
 
         normalized = {}
         for k, v in data.items():
-            clean_k = key_map.get(k.lower(), k)
+            clean_k = key_map.get(str(k).lower(), str(k))
+            if clean_k in ("schema_version", "detector_version", "scoring_config_version", "hash_algorithm"):
+                normalized[clean_k] = str(v) if v is not None else None
+                continue
             if clean_k in ("cpu_usage", "memory_usage") and v is not None:
                 try:
                     v = float(v)
@@ -88,15 +108,35 @@ class EvidenceHasher:
         return json.dumps(data, sort_keys=True, separators=(",", ":"))
 
     @staticmethod
+    def build_versioned_evidence(
+        data: Dict[str, Any],
+        schema_version: str = SCHEMA_VERSION,
+        detector_version: str = DETECTOR_VERSION,
+        scoring_config_version: str = SCORING_CONFIG_VERSION
+    ) -> Dict[str, Any]:
+        """
+        Creates a versioned canonical evidence dictionary including schema,
+        detector version, scoring config version, and SHA-256 algorithm indicator.
+        """
+        base = EvidenceHasher.normalize_dict(data)
+        base["schema_version"] = schema_version
+        base["detector_version"] = detector_version
+        base["scoring_config_version"] = scoring_config_version
+        base["hash_algorithm"] = EvidenceHasher.HASH_ALGORITHM
+        return base
+
+    @staticmethod
+    def clean_hex(val: Any) -> str:
+        if val is None:
+            return ""
+        if isinstance(val, bytes):
+            return val.hex().lower().replace("0x", "")
+        return str(val).strip().lower().replace("0x", "")
+
+    @staticmethod
     def verify(evidence: IncidentEvidence, stored_hash: str) -> bool:
-        computed_hash = EvidenceHasher.hash_evidence(evidence)
-        clean_stored = stored_hash.lower().replace("0x", "")
-        clean_computed = computed_hash.lower().replace("0x", "")
-        return clean_computed == clean_stored
+        return EvidenceHasher.clean_hex(EvidenceHasher.hash_evidence(evidence)) == EvidenceHasher.clean_hex(stored_hash)
 
     @staticmethod
     def verify_dict(data: Dict[str, Any], stored_hash: str) -> bool:
-        computed_hash = EvidenceHasher.hash_dict(data)
-        clean_stored = stored_hash.lower().replace("0x", "")
-        clean_computed = computed_hash.lower().replace("0x", "")
-        return clean_computed == clean_stored
+        return EvidenceHasher.clean_hex(EvidenceHasher.hash_dict(data)) == EvidenceHasher.clean_hex(stored_hash)

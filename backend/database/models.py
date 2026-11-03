@@ -32,6 +32,29 @@ class IncidentRecord:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    def to_evidence_dict(self) -> dict:
+        import json
+        factors_val = self.factors
+        if isinstance(factors_val, str) and factors_val.strip().startswith(("{", "[")):
+            try:
+                factors_val = json.loads(factors_val)
+            except Exception:
+                pass
+        return {
+            "incident_id": self.incident_id,
+            "timestamp": self.timestamp,
+            "cpu_usage": self.cpu_usage,
+            "memory_usage": self.memory_usage,
+            "process_name": self.process_name,
+            "process_runtime_seconds": self.process_runtime_seconds,
+            "network_destination": self.network_destination,
+            "container_name": self.container_name,
+            "environment": self.environment,
+            "risk_score": self.risk_score,
+            "severity": self.severity,
+            "factors": factors_val
+        }
+
 
 @dataclass
 class ThreatIntelRecord:

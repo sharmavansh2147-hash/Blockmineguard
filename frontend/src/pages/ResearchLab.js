@@ -1,33 +1,36 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import api, { evaluationApi } from '../services/api';
 import {
   FlaskConical,
   ShieldAlert,
   Cpu,
   Boxes,
-  CheckCircle2,
-  XCircle,
   AlertTriangle,
   Play,
   Check,
-  RotateCcw,
-  Clock,
-  Layers,
-  ArrowRight,
-  Database,
   Lock,
-  ChevronRight,
   RefreshCw,
-  HelpCircle,
-  TrendingDown
+  CheckCircle2,
+  XCircle,
+  Sliders,
+  Search,
+  Terminal,
+  Filter,
+  BarChart3
 } from 'lucide-react';
 
 export function ResearchLab() {
   const [activeTab, setActiveTab] = useState('detection'); // detection, response, containers, integrity
   const [isLoading, setIsLoading] = useState(false);
 
-  // Tab 1: Detection Comparison Data
+  // Tab 1: Detection Comparison Data & Evaluation Lab
   const [comparisonData, setComparisonData] = useState(null);
+  const [evalData, setEvalData] = useState(null);
+  const [evalThreshold, setEvalThreshold] = useState(35);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [sampleFilter, setSampleFilter] = useState('ALL');
+  const [sampleSearch, setSampleSearch] = useState('');
+  const [detectionSubView, setDetectionSubView] = useState('eval_lab');
 
   // Tab 2: Response Engine Data & Active Simulation State
   const [responseSummary, setResponseSummary] = useState(null);
@@ -45,6 +48,31 @@ export function ResearchLab() {
   const [verificationHistory, setVerificationHistory] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
   const [gasBatchSize, setGasBatchSize] = useState(100);
+
+  // Fetch Evaluation Lab Results (100 labelled workloads)
+  const fetchEvaluation = useCallback(async (threshold = 35) => {
+    setEvalLoading(true);
+    try {
+      const res = await evaluationApi.getResults(threshold);
+      setEvalData(res.data);
+    } catch (err) {
+      console.error('Failed to load evaluation results:', err);
+    } finally {
+      setEvalLoading(false);
+    }
+  }, []);
+
+  const handleRunEvaluation = async (threshold) => {
+    setEvalLoading(true);
+    try {
+      const res = await evaluationApi.run(threshold);
+      setEvalData(res.data);
+    } catch (err) {
+      console.error('Failed to run evaluation:', err);
+    } finally {
+      setEvalLoading(false);
+    }
+  };
 
   // Fetch Comparison Benchmarks
   const fetchComparison = useCallback(async () => {
@@ -100,11 +128,12 @@ export function ResearchLab() {
   }, []);
 
   useEffect(() => {
+    fetchEvaluation(35);
     fetchComparison();
     fetchResponseData();
     fetchContainers();
     fetchVerificationHistory();
-  }, [fetchComparison, fetchResponseData, fetchContainers, fetchVerificationHistory]);
+  }, [fetchEvaluation, fetchComparison, fetchResponseData, fetchContainers, fetchVerificationHistory]);
 
   // Run Safe Workload Simulation
   const handleLaunchSimulation = async () => {
@@ -157,8 +186,35 @@ export function ResearchLab() {
   const baseline = comparisonData?.baseline_detector;
   const enhanced = comparisonData?.enhanced_detector;
 
+  const filteredSamples = useMemo(() => {
+    if (!evalData?.sample_details) return [];
+    return evalData.sample_details.filter(item => {
+      if (sampleFilter !== 'ALL' && item.outcome !== sampleFilter) return false;
+      if (sampleSearch.trim()) {
+        const q = sampleSearch.toLowerCase();
+        const proc = (item.process_name || '').toLowerCase();
+        const cat = (item.category || '').toLowerCase();
+        const desc = (item.description || '').toLowerCase();
+        if (!proc.includes(q) && !cat.includes(q) && !desc.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [evalData, sampleFilter, sampleSearch]);
+
+  const sampleCounts = useMemo(() => {
+    if (!evalData?.sample_details) return { all: 0, tp: 0, fp: 0, tn: 0, fn: 0 };
+    const list = evalData.sample_details;
+    return {
+      all: list.length,
+      tp: list.filter(s => s.outcome === 'TP').length,
+      fp: list.filter(s => s.outcome === 'FP').length,
+      tn: list.filter(s => s.outcome === 'TN').length,
+      fn: list.filter(s => s.outcome === 'FN').length,
+    };
+  }, [evalData]);
+
   return (
-    <div className="research-lab-page" style={{ padding: '24px 32px', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="research-lab-page" style={{ padding: '0 4px 48px' }}>
       {/* Header Banner */}
       <div style={{
         display: 'flex',
@@ -166,46 +222,46 @@ export function ResearchLab() {
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '16px',
-        padding: '24px',
-        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%)',
-        border: '1px solid rgba(59, 130, 246, 0.3)',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        marginBottom: '24px'
+        padding: '20px 24px',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border)',
+        borderRadius: '8px',
+        marginBottom: '20px'
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <span style={{
-              background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
-              color: '#fff',
-              padding: '6px 10px',
-              borderRadius: '8px',
+              background: 'var(--surface-elevated)',
+              color: 'var(--accent-primary)',
+              border: '1px solid var(--border)',
+              padding: '4px 8px',
+              borderRadius: '4px',
               display: 'inline-flex',
               alignItems: 'center',
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              letterSpacing: '0.05em'
+              fontWeight: 600,
+              fontSize: '0.72rem',
+              letterSpacing: '0.04em'
             }}>
-              <FlaskConical size={16} style={{ marginRight: 6 }} />
+              <FlaskConical size={14} style={{ marginRight: 5 }} />
               RESEARCH & BENCHMARK LAB
             </span>
             <span style={{
-              background: 'rgba(16, 185, 129, 0.15)',
-              color: '#10b981',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '0.75rem',
+              background: '#052e16',
+              color: '#86efac',
+              border: '1px solid #166534',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
               fontWeight: 600
             }}>
-              ● Live Academic Experimentation
+              Active Telemetry Suite
             </span>
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-            BlockMineGuard Innovation & Evaluation Engine
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: 0, letterSpacing: '-0.01em' }}>
+            BlockMineGuard Research & Evaluation Engine
           </h1>
-          <p style={{ color: '#94a3b8', margin: '4px 0 0 0', fontSize: '0.9rem' }}>
-            Side-by-side detector comparison, human-authorized containment evaluation, container cgroup telemetry, and immutable proof ledger.
+          <p style={{ color: '#94a3b8', margin: '4px 0 0 0', fontSize: '0.82rem' }}>
+            Multi-signal time-series detection, human-authorized containment evaluation, container cgroup telemetry, and immutable proof ledger.
           </p>
         </div>
 
@@ -276,6 +332,503 @@ export function ResearchLab() {
       {/* TAB 1: DETECTION BENCHMARK */}
       {activeTab === 'detection' && (
         <div>
+          {/* Sub-view Switcher: Evaluation Suite vs Time-Series */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            marginBottom: '20px',
+            padding: '12px 16px',
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px'
+          }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setDetectionSubView('eval_lab')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: detectionSubView === 'eval_lab' ? '1px solid #3b82f6' : '1px solid var(--border)',
+                  background: detectionSubView === 'eval_lab' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                  color: detectionSubView === 'eval_lab' ? '#60a5fa' : 'var(--text-secondary)'
+                }}
+              >
+                <FlaskConical size={14} /> 100-Sample Evaluation Suite (Ground Truth)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetectionSubView('sliding_window')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: detectionSubView === 'sliding_window' ? '1px solid #3b82f6' : '1px solid var(--border)',
+                  background: detectionSubView === 'sliding_window' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                  color: detectionSubView === 'sliding_window' ? '#60a5fa' : 'var(--text-secondary)'
+                }}
+              >
+                <BarChart3 size={14} /> Time-Series Sliding Window vs Snapshot
+              </button>
+            </div>
+
+            <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Terminal size={13} />
+              <span>CLI: <code style={{ color: '#38bdf8' }}>python -m detector.evaluation</code></span>
+            </div>
+          </div>
+
+          {/* VIEW A: 100-SAMPLE GROUND TRUTH EVALUATION LAB */}
+          {detectionSubView === 'eval_lab' && (
+            <div>
+              {/* Metadata Provenance & Disclaimer Card */}
+              <div style={{
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                        {evalData?.metadata?.dataset_name || 'BlockMineGuard Synthetic Benchmark v1.0'}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        Detector: {evalData?.metadata?.detector_version || 'v1.2.0'}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        Config: {evalData?.metadata?.scoring_config_version || 'v1.0'}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        Digest: SHA-256 (bmg-evidence-v1.0)
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      Ground-Truth Detection Evaluation Lab
+                    </h3>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                      Empirical confusion matrix and evaluation metrics computed over 100 reproducible synthetic workloads (50 cryptomining threats, 50 benign enterprise tasks).
+                    </p>
+                  </div>
+
+                  {/* Interactive Threshold Slider & Action */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '8px 14px'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                        <span>Decision Threshold</span>
+                        <span style={{ fontWeight: 700, color: '#38bdf8' }}>{evalThreshold}/100</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="15"
+                        max="85"
+                        step="5"
+                        value={evalThreshold}
+                        onChange={(e) => setEvalThreshold(Number(e.target.value))}
+                        style={{ width: '130px', accentColor: '#3b82f6', cursor: 'pointer' }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRunEvaluation(evalThreshold)}
+                      disabled={evalLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        background: '#2563eb',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: '#ffffff',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: evalLoading ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <RefreshCw size={12} className={evalLoading ? 'spin' : ''} />
+                      {evalLoading ? 'Evaluating...' : 'Re-run Evaluation'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Academic Disclaimer Box */}
+                <div style={{
+                  background: 'rgba(59, 130, 246, 0.06)',
+                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                  borderRadius: '6px',
+                  padding: '10px 14px',
+                  fontSize: '0.75rem',
+                  color: '#93c5fd',
+                  lineHeight: 1.5
+                }}>
+                  <strong>Academic Research Disclaimer:</strong> {evalData?.metadata?.disclaimer || "SYNTHETIC WORKLOAD BENCHMARK: These metrics are derived from a reproducible, labelled synthetic suite of workloads in an isolated lab environment. Performance in live production networks depends on unseen zero-day miner variants and benign workload variance."}
+                </div>
+              </div>
+
+              {/* 6 Key Performance Metric Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+                {/* 1. Accuracy */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Accuracy</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+                    {evalData?.metrics?.accuracy_percent !== undefined ? `${evalData.metrics.accuracy_percent}%` : '--'}
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '4px' }}>
+                    Formula: (TP + TN) / Total
+                  </div>
+                </div>
+
+                {/* 2. Precision */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Precision</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>
+                    {evalData?.metrics?.precision_percent !== undefined ? `${evalData.metrics.precision_percent}%` : '--'}
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '4px' }}>
+                    Formula: TP / (TP + FP)
+                  </div>
+                </div>
+
+                {/* 3. Recall / Sensitivity */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Recall (Sensitivity)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#22c55e', marginTop: '4px' }}>
+                    {evalData?.metrics?.recall_percent !== undefined ? `${evalData.metrics.recall_percent}%` : '--'}
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '4px' }}>
+                    Formula: TP / (TP + FN)
+                  </div>
+                </div>
+
+                {/* 4. Specificity */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Specificity</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a855f7', marginTop: '4px' }}>
+                    {evalData?.metrics?.specificity_percent !== undefined ? `${evalData.metrics.specificity_percent}%` : '--'}
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '4px' }}>
+                    Formula: TN / (TN + FP)
+                  </div>
+                </div>
+
+                {/* 5. Harmonic F1-Score */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Harmonic F1-Score</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                    {evalData?.metrics?.f1_score !== undefined ? evalData.metrics.f1_score.toFixed(4) : '--'}
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '4px' }}>
+                    Formula: 2*(P*R)/(P+R)
+                  </div>
+                </div>
+
+                {/* 6. False Positive Rate (FPR) */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>False Positive Rate</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444', marginTop: '4px' }}>
+                    {evalData?.metrics?.false_positive_rate_percent !== undefined ? `${evalData.metrics.false_positive_rate_percent}%` : '--'}
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '4px' }}>
+                    Formula: FP / (FP + TN)
+                  </div>
+                </div>
+              </div>
+
+              {/* Side-by-Side: Confusion Matrix & Per-Class Results */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                {/* 2x2 Confusion Matrix */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                      2×2 Empirical Confusion Matrix
+                    </h4>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                      N = {evalData?.metadata?.dataset_size || 100} Workloads
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: '8px', textAlign: 'center', fontSize: '0.75rem' }}>
+                    <div></div>
+                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px' }}>Pred: Benign (0)</div>
+                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px' }}>Pred: Threat (1)</div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#94a3b8' }}>
+                      Act: Benign
+                    </div>
+                    <div style={{ background: 'rgba(96, 165, 250, 0.1)', border: '1px solid rgba(96, 165, 250, 0.3)', borderRadius: '8px', padding: '14px 8px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#60a5fa' }}>True Negative (TN)</div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#60a5fa', marginTop: '2px' }}>
+                        {evalData?.confusion_matrix?.true_negatives ?? 34}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: '2px' }}>Benign Suppressed</div>
+                    </div>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '14px 8px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#ef4444' }}>False Positive (FP)</div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '2px' }}>
+                        {evalData?.confusion_matrix?.false_positives ?? 16}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: '2px' }}>Benign Flagged</div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#94a3b8' }}>
+                      Act: Threat
+                    </div>
+                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '14px 8px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#f59e0b' }}>False Negative (FN)</div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>
+                        {evalData?.confusion_matrix?.false_negatives ?? 0}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: '2px' }}>Threat Missed</div>
+                    </div>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '14px 8px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#10b981' }}>True Positive (TP)</div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+                        {evalData?.confusion_matrix?.true_positives ?? 50}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: '2px' }}>Threat Detected</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-Class Breakdown Card */}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '0 0 14px 0', color: 'var(--text-primary)' }}>
+                    Per-Class Empirical Performance
+                  </h4>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Class 1: Threats */}
+                    <div style={{ padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#ef4444' }}>
+                          Class 1: Cryptojacking Threats
+                        </span>
+                        <span style={{ fontSize: '0.72rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          50 Samples
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                        Detection Sensitivity: <strong>{evalData?.per_class_metrics?.cryptojacking_threats?.true_positives ?? 50}/50 detected ({evalData?.per_class_metrics?.cryptojacking_threats?.recall_sensitivity_percent ?? 100.0}%)</strong>.
+                      </div>
+                      <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: `${evalData?.per_class_metrics?.cryptojacking_threats?.recall_sensitivity_percent ?? 100}%`, height: '100%', background: '#10b981' }} />
+                      </div>
+                    </div>
+
+                    {/* Class 2: Benign Workloads */}
+                    <div style={{ padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#60a5fa' }}>
+                          Class 2: Benign Enterprise Workloads
+                        </span>
+                        <span style={{ fontSize: '0.72rem', background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          50 Samples
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                        Suppression Specificity: <strong>{evalData?.per_class_metrics?.benign_workloads?.true_negatives ?? 34}/50 suppressed ({evalData?.per_class_metrics?.benign_workloads?.specificity_percent ?? 68.0}%)</strong>.
+                        16 heavy compiler/transcoding tasks flagged due to single-point CPU load.
+                      </div>
+                      <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: `${evalData?.per_class_metrics?.benign_workloads?.specificity_percent ?? 68}%`, height: '100%', background: '#60a5fa' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Individual 100 Test Cases Table */}
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                      Labelled Workload Test Cases ({filteredSamples.length} of {sampleCounts.all})
+                    </h4>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                      Individual expected vs predicted classifications from the actual Python detector.
+                    </div>
+                  </div>
+
+                  {/* Filter Pills & Search */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px', padding: '2px', border: '1px solid var(--border)' }}>
+                      {[
+                        { key: 'ALL', label: `All (${sampleCounts.all})` },
+                        { key: 'TP', label: `TP (${sampleCounts.tp})`, color: '#10b981' },
+                        { key: 'FP', label: `FP (${sampleCounts.fp})`, color: '#ef4444' },
+                        { key: 'TN', label: `TN (${sampleCounts.tn})`, color: '#60a5fa' },
+                        { key: 'FN', label: `FN (${sampleCounts.fn})`, color: '#f59e0b' },
+                      ].map(tab => (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          onClick={() => setSampleFilter(tab.key)}
+                          style={{
+                            border: 'none',
+                            background: sampleFilter === tab.key ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                            color: sampleFilter === tab.key ? (tab.color || 'var(--text-primary)') : '#94a3b8',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                      <input
+                        type="text"
+                        placeholder="Search process or category..."
+                        value={sampleSearch}
+                        onChange={(e) => setSampleSearch(e.target.value)}
+                        style={{
+                          padding: '5px 10px 5px 28px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.75rem',
+                          width: '180px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Test Cases Table */}
+                <div style={{ overflowX: 'auto', maxHeight: '440px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                    <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-elevated, #161f2e)', zIndex: 2 }}>
+                      <tr style={{ borderBottom: '1px solid var(--border)', color: '#94a3b8', textAlign: 'left' }}>
+                        <th style={{ padding: '8px 10px', width: '40px' }}>#</th>
+                        <th style={{ padding: '8px 10px', width: '70px' }}>Outcome</th>
+                        <th style={{ padding: '8px 10px' }}>Process Name</th>
+                        <th style={{ padding: '8px 10px' }}>Category</th>
+                        <th style={{ padding: '8px 10px' }}>Workload Description</th>
+                        <th style={{ padding: '8px 10px' }}>Ground Truth</th>
+                        <th style={{ padding: '8px 10px' }}>Predicted</th>
+                        <th style={{ padding: '8px 10px', width: '70px' }}>Risk Score</th>
+                        <th style={{ padding: '8px 10px', width: '80px' }}>Severity</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSamples.length === 0 ? (
+                        <tr>
+                          <td colSpan="9" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                            No test cases match filter criteria
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredSamples.map((item, idx) => {
+                          const outcomeBg =
+                            item.outcome === 'TP' ? 'rgba(16, 185, 129, 0.15)' :
+                            item.outcome === 'FP' ? 'rgba(239, 68, 68, 0.15)' :
+                            item.outcome === 'TN' ? 'rgba(96, 165, 250, 0.15)' :
+                            'rgba(245, 158, 11, 0.15)';
+                          const outcomeColor =
+                            item.outcome === 'TP' ? '#10b981' :
+                            item.outcome === 'FP' ? '#ef4444' :
+                            item.outcome === 'TN' ? '#60a5fa' :
+                            '#f59e0b';
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                              <td style={{ padding: '8px 10px', color: '#64748b', fontFamily: 'monospace' }}>
+                                {item.sample_id || idx + 1}
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span style={{
+                                  background: outcomeBg,
+                                  color: outcomeColor,
+                                  border: `1px solid ${outcomeColor}40`,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700
+                                }}>
+                                  {item.outcome}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {item.process_name}
+                              </td>
+                              <td style={{ padding: '8px 10px', color: '#94a3b8' }}>
+                                {item.category}
+                              </td>
+                              <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>
+                                {item.description}
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span style={{
+                                  color: item.ground_truth === 'CRYPTOMINER' ? '#ef4444' : '#60a5fa',
+                                  fontWeight: 600
+                                }}>
+                                  {item.ground_truth}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span style={{
+                                  color: item.predicted === 'CRYPTOMINER' ? '#ef4444' : '#60a5fa',
+                                  fontWeight: 600
+                                }}>
+                                  {item.predicted}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontWeight: 700, color: item.risk_score >= 65 ? '#ef4444' : item.risk_score >= 35 ? '#f59e0b' : '#10b981' }}>
+                                {item.risk_score}/100
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span style={{
+                                  fontSize: '0.6875rem',
+                                  fontWeight: 600,
+                                  color: item.severity === 'CRITICAL' ? '#ef4444' : item.severity === 'HIGH' ? '#f97316' : '#10b981'
+                                }}>
+                                  {item.severity}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW B: TIME-SERIES SLIDING WINDOW VS SNAPSHOT BENCHMARK */}
+          {detectionSubView === 'sliding_window' && (
+            <div>
           {/* Top Comparative KPI Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
             {/* Precision & Recall */}
@@ -501,21 +1054,24 @@ export function ResearchLab() {
 
           {/* Documented Failure Case Analysis Card */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(15, 23, 42, 0.9) 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
-            borderRadius: '12px',
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border)',
+            borderLeft: '4px solid var(--critical)',
+            borderRadius: 'var(--radius)',
             padding: '20px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontWeight: 700, fontSize: '0.95rem', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--critical)', fontWeight: 600, fontSize: '0.875rem', marginBottom: '8px' }}>
               <AlertTriangle size={18} />
               Formal Academic Limitation & Failure Analysis: Sub-Threshold Stealth Cryptomining
             </div>
-            <p style={{ color: '#cbd5e1', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', lineHeight: 1.6, margin: 0 }}>
               {comparisonData?.failure_case_analysis?.explanation ||
                 "When an adversary restricts CPU utilization below 15% and tunnels pool traffic over DNS-over-HTTPS (DoH) via port 443, neither instantaneous heuristics nor sliding-window statistical telemetry can reliably distinguish the process from background system daemons. Academic mitigation requires kernel-level eBPF syscall monitoring, hardware performance counters (PMU L3 cache-miss rates), or deep host memory entropy analysis."
               }
             </p>
           </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -602,18 +1158,8 @@ export function ResearchLab() {
               <button
                 onClick={handleLaunchSimulation}
                 disabled={simLoading}
+                className="btn btn-primary"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 18px',
-                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
                   marginLeft: 'auto'
                 }}
               >
@@ -740,19 +1286,10 @@ export function ResearchLab() {
                       <button
                         onClick={handleAuthorizeContainment}
                         disabled={authLoading}
+                        className="btn btn-primary"
                         style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '11px 22px',
-                          background: 'linear-gradient(135deg, #10b981, #059669)',
-                          border: 'none',
-                          borderRadius: '8px',
-                          color: '#fff',
-                          fontWeight: 800,
-                          fontSize: '0.88rem',
-                          cursor: 'pointer',
-                          boxShadow: '0 0 18px rgba(16, 185, 129, 0.35)'
+                          background: 'var(--success)',
+                          borderColor: 'var(--success)'
                         }}
                       >
                         <Check size={16} />

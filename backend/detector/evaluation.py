@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 import math
+import sys
+import os
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from detector.detection_engine import DetectionEngine, TelemetryData
 
 
@@ -284,9 +287,34 @@ class EvaluationPipeline:
         fpr = false_positives / actual_negatives if actual_negatives > 0 else 0.0
         specificity = true_negatives / actual_negatives if actual_negatives > 0 else 0.0
 
+        per_class_metrics = {
+            "cryptojacking_threats": {
+                "sample_count": actual_positives,
+                "true_positives": true_positives,
+                "false_negatives": false_negatives,
+                "recall_sensitivity": round(recall, 4),
+                "recall_sensitivity_percent": round(recall * 100, 2)
+            },
+            "benign_workloads": {
+                "sample_count": actual_negatives,
+                "true_negatives": true_negatives,
+                "false_positives": false_positives,
+                "specificity": round(specificity, 4),
+                "specificity_percent": round(specificity * 100, 2)
+            }
+        }
+
+        # Add 1-indexed ID to sample details
+        for idx, item in enumerate(detailed_results, 1):
+            item["sample_id"] = idx
+
         return {
             "metadata": {
                 "dataset_name": "BlockMineGuard Synthetic Benchmark v1.0",
+                "dataset_version": "v1.0",
+                "detector_version": "v1.2.0",
+                "scoring_config_version": "v1.0",
+                "schema_version": "bmg-evidence-v1.0",
                 "dataset_size": total,
                 "class_distribution": {
                     "cryptojacking_count": actual_positives,
@@ -295,6 +323,7 @@ class EvaluationPipeline:
                 },
                 "evaluated_threshold": threshold,
                 "threshold_range": "0 - 100",
+                "reproduction_command": "python -m detector.evaluation",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "benchmark_mode": "SYNTHETIC_LAB_ISOLATED",
                 "disclaimer": "SYNTHETIC WORKLOAD BENCHMARK: These metrics are derived from a reproducible, labelled synthetic suite of workloads in an isolated lab environment. Performance in live production networks depends on unseen zero-day miner variants and benign workload variance."
@@ -313,6 +342,7 @@ class EvaluationPipeline:
                 "specificity": round(specificity, 4),
                 "specificity_percent": round(specificity * 100, 2)
             },
+            "per_class_metrics": per_class_metrics,
             "confusion_matrix": {
                 "true_positives": true_positives,
                 "false_positives": false_positives,
@@ -325,9 +355,47 @@ class EvaluationPipeline:
                 "row_labels": ["Actual Benign (0)", "Actual Threat (1)"],
                 "column_labels": ["Predicted Benign (0)", "Predicted Threat (1)"]
             },
-            "sample_details": detailed_results[:15]  # Representative sample preview
+            "sample_details": detailed_results,
+            "sample_count": len(detailed_results)
         }
 
 
 # Global pipeline instance
 evaluation_pipeline = EvaluationPipeline()
+
+
+if __name__ == "__main__":
+    print("\n" + "=" * 70)
+    print("BLOCKMINEGUARD DETECTION EVALUATION LAB — SYNTHETIC BENCHMARK")
+    print("=" * 70)
+    
+    results = evaluation_pipeline.evaluate(threshold=35)
+    meta = results["metadata"]
+    metrics = results["metrics"]
+    cm = results["confusion_matrix"]
+    pcm = results["per_class_metrics"]
+
+    print(f"Dataset:            {meta['dataset_name']} ({meta['dataset_version']})")
+    print(f"Detector Version:   {meta['detector_version']} (Config: {meta['scoring_config_version']})")
+    print(f"Total Workloads:    {meta['dataset_size']} samples (50 Threats, 50 Benign)")
+    print(f"Decision Threshold: {meta['evaluated_threshold']}/100")
+    print("-" * 70)
+    print("CONFUSION MATRIX:")
+    print(f"  Actual Benign  [TN: {cm['true_negatives']:2d}]  [FP: {cm['false_positives']:2d}]")
+    print(f"  Actual Threat  [FN: {cm['false_negatives']:2d}]  [TP: {cm['true_positives']:2d}]")
+    print("-" * 70)
+    print("PERFORMANCE METRICS:")
+    print(f"  Accuracy:            {metrics['accuracy_percent']:6.2f}%")
+    print(f"  Precision:           {metrics['precision_percent']:6.2f}%")
+    print(f"  Recall (Sensitivity):{metrics['recall_percent']:6.2f}%")
+    print(f"  Specificity:         {metrics['specificity_percent']:6.2f}%")
+    print(f"  Harmonic F1-Score:   {metrics['f1_score']:6.4f} ({metrics['f1_score_percent']}%)")
+    print(f"  False Positive Rate: {metrics['false_positive_rate_percent']:6.2f}%")
+    print("-" * 70)
+    print("PER-CLASS EVALUATION:")
+    print(f"  Cryptojacking Threats: {pcm['cryptojacking_threats']['true_positives']}/{pcm['cryptojacking_threats']['sample_count']} detected (Recall: {pcm['cryptojacking_threats']['recall_sensitivity_percent']}%)")
+    print(f"  Benign Workloads:      {pcm['benign_workloads']['true_negatives']}/{pcm['benign_workloads']['sample_count']} suppressed (Specificity: {pcm['benign_workloads']['specificity_percent']}%)")
+    print("-" * 70)
+    print(f"Disclaimer: {meta['disclaimer']}")
+    print("=" * 70 + "\n")
+

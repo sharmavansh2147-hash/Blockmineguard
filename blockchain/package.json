@@ -8,6 +8,8 @@
     "test": "hardhat test",
     "node": "hardhat node",
     "deploy": "hardhat ignition deploy ./ignition/modules/ThreatRegistry.ts --network localhost",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
     "deploy:testnet": "hardhat ignition deploy ./ignition/modules/ThreatRegistry.ts --network sepolia",
     "verify": "hardhat verify"
   },

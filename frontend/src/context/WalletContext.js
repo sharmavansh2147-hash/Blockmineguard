@@ -24,6 +24,12 @@ export function WalletProvider({ children }) {
           setAccount(accounts[0].address);
           setChainId(Number(network.chainId));
           setIsConnected(true);
+        } else {
+          setProvider(null);
+          setSigner(null);
+          setAccount(null);
+          setChainId(null);
+          setIsConnected(false);
         }
       } catch (error) {
         console.error('Failed to check wallet connection:', error);
@@ -35,20 +41,35 @@ export function WalletProvider({ children }) {
     checkConnection();
 
     if (window.ethereum) {
-      window.ethereum.on('accountsChanged', checkConnection);
-      window.ethereum.on('chainChanged', checkConnection);
+      const handleAccountsChanged = (accounts) => {
+        if (!accounts || accounts.length === 0) {
+          setProvider(null);
+          setSigner(null);
+          setAccount(null);
+          setChainId(null);
+          setIsConnected(false);
+        } else {
+          checkConnection();
+        }
+      };
+
+      const handleChainChanged = () => {
+        checkConnection();
+      };
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
 
       return () => {
-        window.ethereum.removeListener('accountsChanged', checkConnection);
-        window.ethereum.removeListener('chainChanged', checkConnection);
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
   }, [checkConnection]);
 
   const connect = async () => {
     if (!window.ethereum) {
-      alert('Please install MetaMask to use this feature');
-      return;
+      throw new Error('MetaMask or Web3 wallet extension is not installed. Please install MetaMask to interact with the blockchain.');
     }
 
     setIsConnecting(true);
@@ -64,6 +85,7 @@ export function WalletProvider({ children }) {
       setAccount(address);
       setChainId(Number(network.chainId));
       setIsConnected(true);
+      return { address, chainId: Number(network.chainId), signer };
     } catch (error) {
       console.error('Failed to connect wallet:', error);
       throw error;
@@ -82,37 +104,66 @@ export function WalletProvider({ children }) {
 
   const switchNetwork = async (targetChainId) => {
     if (!window.ethereum) return;
+    const hexChainId = `0x${Number(targetChainId).toString(16)}`;
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${targetChainId.toString(16)}` }],
+        params: [{ chainId: hexChainId }],
       });
+      await checkConnection();
     } catch (error) {
-      if (error.code === 4902) {
+      if (error.code === 4902 || error?.data?.originalError?.code === 4902) {
         try {
+          const isSepolia = Number(targetChainId) === 11155111;
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: `0x${targetChainId.toString(16)}`,
-              chainName: targetChainId === 31337 ? 'Hardhat Local' : 'Sepolia',
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              rpcUrls: [targetChainId === 31337 ? 'http://127.0.0.1:8545' : 'https://rpc.sepolia.org'],
-              blockExplorerUrls: targetChainId === 11155111 ? ['https://sepolia.etherscan.io'] : [],
+              chainId: hexChainId,
+              chainName: isSepolia ? 'Ethereum Sepolia Testnet' : 'Hardhat Localhost',
+              nativeCurrency: {
+                name: isSepolia ? 'Sepolia Ether' : 'Localhost ETH',
+                symbol: isSepolia ? 'SEP' : 'GO',
+                decimals: 18
+              },
+              rpcUrls: [
+                isSepolia
+                  ? 'https://ethereum-sepolia-rpc.publicnode.com'
+                  : 'http://127.0.0.1:8545'
+              ],
+              blockExplorerUrls: isSepolia ? ['https://sepolia.etherscan.io'] : [],
             }],
           });
+          await checkConnection();
         } catch (addError) {
           console.error('Failed to add network:', addError);
+          throw addError;
         }
+      } else {
+        throw error;
       }
-      throw error;
     }
   };
+
+  const isSepolia = chainId === 11155111;
+  const isLocal = chainId === 31337;
+  const isSupportedNetwork = isSepolia || isLocal;
+  const networkName = isSepolia
+    ? 'Ethereum Sepolia'
+    : isLocal
+    ? 'Hardhat Localhost'
+    : chainId
+    ? `Chain ID ${chainId}`
+    : 'Disconnected';
 
   const value = {
     account,
     provider,
     signer,
     chainId,
+    isSepolia,
+    isLocal,
+    isSupportedNetwork,
+    networkName,
     isConnected,
     isConnecting,
     connect,

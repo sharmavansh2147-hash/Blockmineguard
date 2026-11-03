@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { useWallet } from '../context/WalletContext';
-import { reportersApi, statsApi } from '../services/api';
+import { reportersApi, statsApi, blockchainApi } from '../services/api';
+import { getContractAddress } from '../services/contractService';
 import {
   Wallet,
   Network,
@@ -28,7 +29,7 @@ export function Settings() {
       loadReporterInfo();
     }
     loadContractInfo();
-  }, [isConnected, account]);
+  }, [isConnected, account, chainId]);
 
   const loadReporterInfo = async () => {
     try {
@@ -42,13 +43,13 @@ export function Settings() {
   const loadContractInfo = async () => {
     try {
       const response = await statsApi.getStats();
+      const currentChainId = chainId || response.data.chain_id || 31337;
+      const resolvedAddress = getContractAddress(currentChainId);
 
-      if (response.data.blockchain_connected) {
-        setDeployedContract({
-          address: response.data.contract_address || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-          network: response.data.network || 'Hardhat Local',
-        });
-      }
+      setDeployedContract({
+        address: resolvedAddress || (currentChainId === 11155111 ? 'Not Deployed on Sepolia' : (response.data.contract_address || '0x162A433068F51e18b7d13932F27e66a3f99E6890')),
+        network: currentChainId === 11155111 ? 'Ethereum Sepolia (Chain 11155111)' : (currentChainId === 31337 ? 'Hardhat Local (Chain 31337)' : `Chain ${currentChainId}`),
+      });
     } catch (error) {
       console.error('Failed to load contract info:', error);
     }
@@ -68,14 +69,21 @@ export function Settings() {
   const handleSwitchNetwork = async (targetChainId) => {
     try {
       await switchNetwork(targetChainId);
+      const networkKey = targetChainId === 11155111 ? 'sepolia' : 'localhost';
+      try {
+        await blockchainApi.switchNetwork(networkKey);
+      } catch (backendErr) {
+        console.warn('Backend network sync note:', backendErr.message);
+      }
       showToast(
         `Switched to ${
           targetChainId === 31337 ? 'Hardhat Local' : 'Sepolia'
         }`,
         'success'
       );
+      loadContractInfo();
     } catch (error) {
-      showToast('Failed to switch network', 'error');
+      showToast(error.message || 'Failed to switch network', 'error');
     }
   };
 
@@ -592,6 +600,18 @@ export function Settings() {
             <div style={{ display: 'grid', gap: '1rem' }}>
               <InfoItem label="Project" value="BlockMineGuard" />
               <InfoItem label="Version" value="1.0.0" />
+              <InfoItem
+                label="Lead Developer"
+                value="Vansh Sharma (Reg: 25BCE1567)"
+              />
+              <InfoItem
+                label="Co-Developer"
+                value="Divyansh Bhatia (Reg: 25BCE1414)"
+              />
+              <InfoItem
+                label="Academic Degree"
+                value="BTech Computer Science & Engineering (2026)"
+              />
               <InfoItem
                 label="Description"
                 value="Blockchain-Based Tamper-Evident Cryptojacking Detection and Threat Intelligence Sharing Framework"

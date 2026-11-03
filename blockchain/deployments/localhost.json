@@ -1,0 +1,10 @@
+{
+  "network": "localhost",
+  "chainId": 31337,
+  "contractAddress": "0x525C7063E7C20997BaaE9bDa922159152D0e8417",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "transactionHash": "0xc2e5fa89baedf052d97f5289d9de4b2e84763fa154d9545785e3c71e1e1def2b",
+  "blockNumber": 126,
+  "deployedAt": "2026-10-29T05:24:49.026Z",
+  "explorerUrl": null
+}

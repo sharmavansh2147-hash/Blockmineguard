@@ -60,8 +60,12 @@
 6. **Phase 6: Advanced Experimental Dashboard (`/research-lab`)**:
    - Interactive research evaluation lab displaying baseline vs enhanced benchmarks, 2x2 confusion matrices, live containment simulation, container cgroup inspection, and blockchain gas ledgers.
 
-7. **Phase 7: Automated Testing & Reliability**:
-   - 90 total tests passing (66 backend pytest tests + 24 Hardhat contract tests).
+7. **Phase 7: Final Value-Adding Features & Robustness**:
+   - **Detection Evaluation Lab**: Dedicated ground-truth evaluation page and CLI runner (`.venv/bin/python backend/detector/evaluation.py`) benchmarking 100 labelled synthetic workloads (50 threats, 50 benign) with confusion matrix, precision, recall, specificity, F1-score, and FPR.
+   - **Versioned Canonical Evidence (`bmg-evidence-v1.0`)**: Deterministic SHA-256 serialization adhering to documented schema versions (`v1.2.0` detector, `v1.0` scoring config) with mathematical tampering detection.
+   - **System Readiness Checker**: Non-intrusive diagnostic probe inspecting Flask backend, SQLite DB, detector, blockchain RPC, smart contract bytecode, and browser wallet with real-time latency.
+   - **Forensic Report Export**: One-click JSON forensic report and CSV export directly from Incident Details.
+   - **106 Total Automated Tests**: Comprehensive test suite spanning Solidity contracts, detection heuristics, input validation, duplicate prevention, and RPC outage resilience.
 
 ---
 
@@ -267,7 +271,7 @@ backend/test_time_series_detector.py::TestComparativeBenchmark::test_benchmark_e
 backend/test_time_series_detector.py::TestComparativeBenchmark::test_api_comparison_endpoint PASSED [ 98%]
 backend/test_time_series_detector.py::TestComparativeBenchmark::test_api_analyze_window_endpoint PASSED [100%]
 
-============================== 66 passed in 0.60s ==============================
+============================== 82 passed in 0.66s ==============================
 ```
 
 ### Hardhat Smart Contract Suite (24 Passing Tests)
@@ -309,35 +313,55 @@ cd blockchain && npx hardhat test
     Severity Enum
       ✔ Should handle all severity levels
 
-  24 passing (261ms)
+  24 passing (230ms)
 ```
 
 ---
 
-## 8. Reproducible Demonstration Script
+## 8. Reproducible Demonstration & Review Deliverables
 
-To execute the full lifecycle demonstration programmatically:
+Comprehensive guides and step-by-step walkthroughs are provided in:
+- **[FINAL_REVIEW_GUIDE.md](file:///Users/vanshsharma/blockmineguard/FINAL_REVIEW_GUIDE.md)**: Full architecture breakdown, Sepolia faucet and wallet configuration, test execution, troubleshooting, and production deployment guide.
+- **[DEMO_SCRIPT.md](file:///Users/vanshsharma/blockmineguard/DEMO_SCRIPT.md)**: Concise 5-minute faculty review presentation click-sequence and talking points.
+
+### Quick Start Commands (Root Package)
 
 ```bash
-# 1. Start Hardhat Node
-cd blockchain && npx hardhat node
+# 1. Start Local Hardhat Blockchain (Chain ID 31337)
+npm run blockchain
 
-# 2. Deploy Contract
-npx hardhat ignition deploy ./ignition/modules/ThreatRegistry.ts --network localhost
+# 2. Deploy ThreatRegistry Contract to Localhost
+npm run deploy:local
 
-# 3. Start Backend
-cd ../backend && .venv/bin/python app.py
+# 3. (Optional) Deploy ThreatRegistry to Ethereum Sepolia Testnet (Chain ID 11155111)
+npm run deploy:sepolia
 
-# 4. Start Frontend
-cd ../frontend && npm start
+# 4. Start Python Flask Backend (Port 5001)
+npm run backend
+
+# 5. Start React SOC Security Console (Port 3000)
+npm run dev
+
+# 6. Run Complete Test Suite (All 128 Tests: 24 Contract, 95 Backend, 9 Frontend)
+npm test
+npm --prefix frontend test -- --watchAll=false
+
+# 7. Run Detection Evaluation Lab CLI Benchmark (100 Workloads)
+.venv/bin/python backend/detector/evaluation.py
+
+# 8. Query Non-Intrusive System Readiness
+curl -s http://localhost:5001/system/readiness | jq .
 ```
 
 ### Live End-to-End Demonstration Walkthrough
-1. **Interactive Research Lab**: Navigate to `http://localhost:3000/research-lab`.
-2. **Side-by-Side Comparison**: Review the comparative confusion matrices (Baseline snapshot: F1 `0.727` vs Enhanced time-series: F1 `0.909`).
-3. **Safe Response Simulation**: Click **Generate Controlled Workload** -> Observe automated tiered recommendation (`CONTAIN_PROCESS_SUSPEND`) in `PENDING_AUTHORIZATION` status -> Click **Authorize & Apply Containment** -> Observe CPU drop from `95.4%` to `2.7%` (-97.17% reduction) with sub-100ms response latency.
-4. **Container Cgroup Inspection**: Switch to the **Container Inspection** tab -> Toggle `Simulate Mining Surge` vs `Apply Cgroup Throttle (10%)` on `bmg-cryptominer-eval-02`.
-5. **Tamper-Evident Verification**: View the **Cryptographic Proof & Gas** tab -> Observe gas consumption (~48,210 gas) and verification audit history.
+1. **System Readiness Check**: On Dashboard (`http://localhost:3000`), click **Run System Check** to verify all subsystems (Backend, DB, Detector, RPC, Contract, Wallet) with live latency.
+2. **Interactive Detection Lab**: On Dashboard, click `1. Normal Workload (Nginx)` (LOW risk) vs `2. Cryptojacking Workload (XMRig)` (CRITICAL risk).
+3. **Register on Blockchain**: Click **Register on Blockchain (MetaMask)** on `/threat-detection`, `/incidents/:id`, or `/verify`. Calculates the canonical RFC-8785 SHA-256 evidence digest, requests user signature in MetaMask, waits for 1 block confirmation, updates the backend, and retrieves the actual on-chain record.
+4. **Honest Verification Center (`/verify`)**: Unregistered records accurately display `UNREGISTERED ON BLOCKCHAIN` (Amber `#D29922`). Clicking **Register on Blockchain** commits the anchor and automatically transitions the UI to **COMPLETELY GREEN** (`INTEGRITY VERIFIED`).
+5. **Cryptographic Tamper Detection**: Click **Simulate Tampering** to alter telemetry (CPU/risk score) -> UI transitions to **COMPLETELY RED** (`TAMPERING DETECTED`). Click **Reset Clean** to restore the authentic baseline -> UI returns to **COMPLETELY GREEN**.
+6. **Network Switching (Sepolia & Localhost)**: Switch between **Hardhat Localhost (31337)** and **Ethereum Sepolia (11155111)** using the top navigation dropdown with automatic chain ID detection and contract bytecode verification.
+7. **Forensic Evidence Export**: On `/incidents/:id`, click **Export JSON** or **Export CSV** to download tamper-evident evidence packages.
+
 
 ---
 
@@ -353,6 +377,15 @@ cd ../frontend && npm start
 
 ---
 
-## 10. Academic Disclaimer & Ethics Statement
+## 10. Developed By (Academic Project Team)
+
+| Developer | Registration Number | Degree / Program | Primary Domain & Key Research Focus |
+| :--- | :--- | :--- | :--- |
+| **Vansh Sharma** | `25BCE1567` | B.Tech CSE (2026) | Sliding-window cryptojacking heuristics, `ThreatRegistry.sol` smart contract & EVM evidence anchoring |
+| **Divyansh Bhatia** | `25BCE1414` | B.Tech CSE (2026) | Enterprise React SOC dashboard, 100-workload research lab evaluation suite & cgroup telemetry pipeline |
+
+---
+
+## 11. Academic Disclaimer & Ethics Statement
 
 This software is developed strictly for educational, defensive, and academic research purposes. It uses safe synthetic workloads, controlled test fixtures, and read-only system metrics. It does not contain, execute, or distribute real cryptomining malware or exploit tooling.

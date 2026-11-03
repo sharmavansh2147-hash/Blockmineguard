@@ -60,6 +60,7 @@ contract ThreatRegistry is Ownable {
     mapping(address => ReporterProfile) public reporterProfiles;
     mapping(uint256 => address) public incidentToReporter;
     mapping(bytes32 => uint256) public hashToIncidentId;
+    mapping(string => uint256) public externalIdToIncidentId;
 
     event IncidentReported(
         uint256 indexed incidentId,
@@ -127,6 +128,7 @@ contract ThreatRegistry is Ownable {
         require(bytes(externalId).length > 0, "External ID required");
         require(evidenceHash != bytes32(0), "Evidence hash required");
         require(hashToIncidentId[evidenceHash] == 0, "Evidence already registered");
+        require(externalIdToIncidentId[externalId] == 0, "External ID already registered");
 
         if (!reporterProfiles[msg.sender].registered) {
             _registerReporter(msg.sender);
@@ -149,6 +151,7 @@ contract ThreatRegistry is Ownable {
 
         incidentToReporter[incidentId] = msg.sender;
         hashToIncidentId[evidenceHash] = incidentId;
+        externalIdToIncidentId[externalId] = incidentId;
 
         ReporterProfile storage profile = reporterProfiles[msg.sender];
         profile.totalReports += 1;
@@ -258,6 +261,12 @@ contract ThreatRegistry is Ownable {
 
     function getIncidentByHash(bytes32 evidenceHash) external view returns (uint256) {
         return hashToIncidentId[evidenceHash];
+    }
+
+    function getIncidentByExternalId(string calldata externalId) external view returns (Incident memory) {
+        uint256 id = externalIdToIncidentId[externalId];
+        require(id != 0 && incidents[id].exists, "Incident not found");
+        return incidents[id];
     }
 
     function getIncidentsByReporter(address reporter) external view returns (uint256[] memory) {

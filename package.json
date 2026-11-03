@@ -1,0 +1,18 @@
+{
+  "name": "blockmineguard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BlockMineGuard - Blockchain-Based Cryptojacking Detection, Prevention, and Threat Intelligence System",
+  "scripts": {
+    "dev": "npm --prefix frontend start",
+    "start": "npm --prefix frontend start",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix blockchain test && .venv/bin/pytest backend/",
+    "test:blockchain": "npm --prefix blockchain test",
+    "test:backend": ".venv/bin/pytest backend/",
+    "backend": "cd backend && .venv/bin/python app.py",
+    "blockchain": "cd blockchain && npx hardhat node",
+    "deploy:local": "npm --prefix blockchain run deploy:local",
+    "deploy:sepolia": "npm --prefix blockchain run deploy:sepolia"
+  }
+}

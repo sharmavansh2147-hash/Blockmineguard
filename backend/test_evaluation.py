@@ -85,6 +85,35 @@ class TestEvaluationPipeline:
         assert results["metrics"]["f1_score"] == 1.0
         assert results["metrics"]["false_positive_rate"] == 0.0
 
+    def test_empty_dataset_handling(self):
+        pipeline = EvaluationPipeline(dataset=[])
+        results = pipeline.evaluate(threshold=35)
+        metrics = results["metrics"]
+        assert metrics["accuracy"] == 0.0
+        assert metrics["precision"] == 0.0
+        assert metrics["recall"] == 0.0
+        assert metrics["f1_score"] == 0.0
+        assert metrics["false_positive_rate"] == 0.0
+        assert results["metadata"]["dataset_size"] == 0
+        assert len(results["sample_details"]) == 0
+
+    def test_per_class_and_version_metadata(self):
+        pipeline = EvaluationPipeline()
+        results = pipeline.evaluate(threshold=35)
+        meta = results["metadata"]
+        pcm = results["per_class_metrics"]
+
+        assert meta["detector_version"] == "v1.2.0"
+        assert meta["schema_version"] == "bmg-evidence-v1.0"
+        assert meta["reproduction_command"] == "python -m detector.evaluation"
+        assert len(results["sample_details"]) == 100
+        assert "sample_id" in results["sample_details"][0]
+
+        assert pcm["cryptojacking_threats"]["sample_count"] == 50
+        assert pcm["benign_workloads"]["sample_count"] == 50
+        assert pcm["cryptojacking_threats"]["true_positives"] == 50
+        assert pcm["benign_workloads"]["true_negatives"] >= 30
+
 
 class TestEvaluationEndpoints:
     @pytest.fixture

@@ -4,19 +4,16 @@ import { incidentsApi, detectionApi, reportsApi } from '../services/api';
 import { useApp } from '../App';
 import { useWallet } from '../context/WalletContext';
 import {
-  Plus,
   Search,
   Filter,
   Download,
   RefreshCw,
   AlertTriangle,
   CheckCircle,
-  Clock,
   Shield,
   Copy,
   Check,
   Eye,
-  Sliders,
   Zap,
   X,
   FileText,
@@ -117,7 +114,7 @@ export function Incidents() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit] = useState(25);
+  const [limit, setLimit] = useState(25);
 
   const [filters, setFilters] = useState({
     severity: searchParams.get('severity') || 'ALL',
@@ -433,7 +430,7 @@ export function Incidents() {
               className="badge badge-info"
               style={{ fontSize: '0.8rem', padding: '3px 10px', fontWeight: 700 }}
             >
-              {total} Total Records
+              {total.toLocaleString()} Total Records
             </span>
           </div>
           <p className="page-subtitle" style={{ marginTop: '4px' }}>
@@ -492,8 +489,8 @@ export function Incidents() {
         <div
           style={{
             padding: '16px 20px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(15, 23, 42, 0.65)',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface-elevated)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -503,7 +500,7 @@ export function Incidents() {
         >
           {/* Filter Pills */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginRight: '4px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginRight: '4px' }}>
               <Filter size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
               Filters:
             </span>
@@ -549,7 +546,7 @@ export function Incidents() {
           <div style={{ position: 'relative', width: '280px' }}>
             <Search
               size={15}
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}
+              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}
             />
             <input
               type="text"
@@ -567,37 +564,37 @@ export function Incidents() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '4rem' }}>
               <div className="spinner" style={{ margin: '0 auto 12px' }} />
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Loading incidents from database...</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Loading incidents from database...</p>
             </div>
           ) : incidents.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem' }}>
-              <AlertTriangle size={36} style={{ color: '#f59e0b', margin: '0 auto 12px' }} />
-              <h4 style={{ color: '#f1f5f9', margin: '0 0 6px 0' }}>No matching incidents found</h4>
-              <p style={{ color: '#64748b', fontSize: '0.82rem', margin: 0 }}>
+              <AlertTriangle size={36} style={{ color: 'var(--warning)', margin: '0 auto 12px' }} />
+              <h4 style={{ color: 'var(--text-primary)', margin: '0 0 6px 0' }}>No matching incidents found</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: 0 }}>
                 Try resetting your filters or search criteria.
               </p>
             </div>
           ) : (
             <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: 'rgba(15, 23, 42, 0.4)', textAlign: 'left', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <tr style={{ background: 'var(--surface-elevated)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
                     <input
                       type="checkbox"
                       checked={selectedIds.size === incidents.length && incidents.length > 0}
                       onChange={toggleSelectAll}
-                      style={{ cursor: 'pointer', accentColor: '#06b6d4' }}
+                      style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
                       title="Select all on this page"
                     />
                   </th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Incident ID</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Severity</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Risk Score</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Process & Env</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Network Destination</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Verification</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>Resolution</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Incident ID</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Severity</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Risk Score</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Process & Env</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Network Destination</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Verification</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>Resolution</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.06em', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -614,8 +611,8 @@ export function Incidents() {
                       onClick={() => openInspector(inc)}
                       style={{
                         cursor: 'pointer',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-                        background: isSelected ? 'rgba(6, 182, 212, 0.08)' : 'transparent',
+                        borderBottom: '1px solid var(--border)',
+                        background: isSelected ? 'rgba(88, 166, 255, 0.08)' : 'transparent',
                         transition: 'background 0.15s ease'
                       }}
                       className="incident-table-row"
@@ -625,17 +622,17 @@ export function Incidents() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={(e) => toggleSelectOne(inc.incident_id, e)}
-                          style={{ cursor: 'pointer', accentColor: '#06b6d4' }}
+                          style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
                         />
                       </td>
 
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#38bdf8', fontSize: '0.82rem' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--primary)', fontSize: '0.82rem' }}>
                             {inc.incident_id}
                           </span>
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                           {new Date(inc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </div>
                       </td>
@@ -648,33 +645,33 @@ export function Incidents() {
 
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ width: 50, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ width: 50, height: 6, background: 'var(--surface-elevated)', borderRadius: 3, overflow: 'hidden' }}>
                             <div
                               style={{
                                 width: `${Math.min(100, inc.risk_score)}%`,
                                 height: '100%',
-                                background: isCritical ? '#dc2626' : isHigh ? '#f97316' : inc.risk_score >= 40 ? '#f59e0b' : '#10b981'
+                                background: isCritical ? 'var(--critical)' : isHigh ? 'var(--warning)' : inc.risk_score >= 40 ? 'var(--warning)' : 'var(--success)'
                               }}
                             />
                           </div>
-                          <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '0.85rem', color: isCritical ? '#f87171' : '#f1f5f9' }}>
+                          <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem', color: isCritical ? 'var(--critical)' : 'var(--text-primary)' }}>
                             {inc.risk_score}
                           </span>
                         </div>
                       </td>
 
                       <td style={{ padding: '12px 14px', maxWidth: '180px' }}>
-                        <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#e2e8f0', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {inc.process_name}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                           CPU: {inc.cpu_usage}% · Mem: {inc.memory_usage}% · {inc.environment}
                         </div>
                       </td>
 
                       <td style={{ padding: '12px 14px', maxWidth: '170px' }}>
-                        <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {inc.network_destination || <span style={{ color: '#475569' }}>None (Internal)</span>}
+                        <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {inc.network_destination || <span style={{ color: 'var(--text-secondary)' }}>None (Internal)</span>}
                         </div>
                       </td>
 
@@ -732,20 +729,53 @@ export function Incidents() {
           <div
             style={{
               padding: '14px 20px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              borderTop: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
               gap: '12px',
-              background: 'rgba(15, 23, 42, 0.4)'
+              background: 'var(--surface-elevated)'
             }}
           >
-            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-              Showing {((page - 1) * limit) + 1} - {Math.min(total, page * limit)} of {total} incidents
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Showing {(((page - 1) * limit) + 1).toLocaleString()} - {Math.min(total, page * limit).toLocaleString()} of {total.toLocaleString()} incidents
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                <span>Per page:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="input-select"
+                  style={{
+                    padding: '2px 8px',
+                    fontSize: '0.78rem',
+                    height: '26px',
+                    width: 'auto',
+                    minWidth: '60px'
+                  }}
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                title="First Page"
+              >
+                « First
+              </button>
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
@@ -755,8 +785,8 @@ export function Incidents() {
                 Previous
               </button>
 
-              <span style={{ display: 'flex', alignItems: 'center', padding: '0 10px', fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9' }}>
-                Page {page} of {totalPages}
+              <span style={{ display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Page {page.toLocaleString()} of {totalPages.toLocaleString()}
               </span>
 
               <button
@@ -766,6 +796,15 @@ export function Incidents() {
                 disabled={page === totalPages}
               >
                 Next
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                title="Last Page"
+              >
+                Last »
               </button>
             </div>
           </div>
@@ -780,27 +819,25 @@ export function Incidents() {
             bottom: '24px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid rgba(6, 182, 212, 0.4)',
-            borderRadius: '14px',
-            padding: '12px 24px',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(6, 182, 212, 0.2)',
-            backdropFilter: 'blur(12px)',
+            background: 'var(--surface-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '10px 20px',
+            boxShadow: 'var(--shadow-md)',
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            zIndex: 1000,
-            animation: 'fadeIn 0.2s ease-in-out'
+            gap: '14px',
+            zIndex: 1000
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Layers size={18} style={{ color: '#06b6d4' }} />
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc' }}>
+            <Layers size={16} style={{ color: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               {selectedIds.size} Selected
             </span>
           </div>
 
-          <div style={{ height: '20px', width: '1px', background: 'rgba(255, 255, 255, 0.15)' }} />
+          <div style={{ height: '18px', width: '1px', background: 'var(--border)' }} />
 
           <button
             type="button"
@@ -827,7 +864,7 @@ export function Incidents() {
             type="button"
             className="btn btn-outline btn-sm"
             onClick={() => setSelectedIds(new Set())}
-            style={{ color: '#94a3b8' }}
+            style={{ color: 'var(--text-secondary)' }}
           >
             Deselect All
           </button>
@@ -844,39 +881,37 @@ export function Incidents() {
             bottom: 0,
             width: '100%',
             maxWidth: '520px',
-            background: 'rgba(11, 19, 38, 0.98)',
-            borderLeft: '1px solid rgba(59, 130, 246, 0.3)',
-            boxShadow: '-10px 0 40px rgba(0, 0, 0, 0.8)',
-            backdropFilter: 'blur(20px)',
+            background: 'var(--surface-card)',
+            borderLeft: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-md)',
             zIndex: 2000,
             display: 'flex',
             flexDirection: 'column',
-            overflowY: 'auto',
-            animation: 'slideInRight 0.25s ease-out'
+            overflowY: 'auto'
           }}
         >
           {/* Drawer Header */}
           <div
             style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'rgba(15, 23, 42, 0.6)'
+              background: 'var(--surface-elevated)'
             }}
           >
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Shield size={18} style={{ color: '#38bdf8' }} />
-                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f8fafc', fontWeight: 700 }}>
+                <Shield size={16} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                   {inspectIncident.incident_id}
                 </h3>
                 <span className={`badge badge-${inspectIncident.severity.toLowerCase()}`}>
                   {inspectIncident.severity}
                 </span>
               </div>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.74rem', color: '#64748b' }}>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                 {new Date(inspectIncident.timestamp).toLocaleString()}
               </p>
             </div>
@@ -884,39 +919,39 @@ export function Incidents() {
             <button
               type="button"
               className="btn btn-outline btn-sm"
-              style={{ padding: '6px', borderRadius: '50%' }}
+              style={{ padding: '6px', borderRadius: 'var(--radius-sm)' }}
               onClick={() => setInspectIncident(null)}
               aria-label="Close drawer"
             >
-              <X size={16} />
+              <X size={14} />
             </button>
           </div>
 
           {/* Drawer Body */}
-          <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Risk Score Highlight */}
             <div
               style={{
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.5) 100%)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '12px',
-                padding: '16px'
+                background: 'var(--surface-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                padding: '14px'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.78rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Explainable Risk Score
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
+                  Risk Score
                 </span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: inspectIncident.risk_score >= 85 ? '#f87171' : '#38bdf8' }}>
+                <span style={{ fontSize: '1.125rem', fontWeight: 700, color: inspectIncident.risk_score >= 85 ? 'var(--critical)' : 'var(--primary)' }}>
                   {inspectIncident.risk_score} / 100
                 </span>
               </div>
-              <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
                 <div
                   style={{
                     width: `${Math.min(100, inspectIncident.risk_score)}%`,
                     height: '100%',
-                    background: inspectIncident.risk_score >= 85 ? '#dc2626' : inspectIncident.risk_score >= 70 ? '#f97316' : '#10b981'
+                    background: inspectIncident.risk_score >= 85 ? 'var(--critical)' : inspectIncident.risk_score >= 70 ? 'var(--warning)' : 'var(--success)'
                   }}
                 />
               </div>
@@ -925,23 +960,24 @@ export function Incidents() {
             {/* Evidence & Hash Info */}
             <div
               style={{
-                background: 'rgba(15, 23, 42, 0.5)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '12px',
-                padding: '16px'
+                background: 'var(--surface-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                padding: '14px'
               }}
             >
-              <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
                 Deterministic Evidence Digest (SHA-256)
               </div>
               <div
                 style={{
-                  background: 'rgba(0, 0, 0, 0.4)',
+                  background: 'var(--bg-main)',
+                  border: '1px solid var(--border)',
                   padding: '8px 10px',
-                  borderRadius: '6px',
+                  borderRadius: 'var(--radius-sm)',
                   fontFamily: 'monospace',
                   fontSize: '0.72rem',
-                  color: '#38bdf8',
+                  color: 'var(--text-primary)',
                   wordBreak: 'break-all',
                   display: 'flex',
                   alignItems: 'center',
@@ -953,33 +989,33 @@ export function Incidents() {
                 <button
                   type="button"
                   onClick={() => copyEvidenceHash(inspectIncident.evidence_hash)}
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 2 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 2 }}
                   title="Copy SHA-256 Hash"
                 >
-                  {copiedHash ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                  {copiedHash ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
                 </button>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px', fontSize: '0.78rem' }}>
                 <div>
-                  <span style={{ color: '#64748b' }}>Process Name:</span>{' '}
-                  <strong style={{ color: '#f1f5f9' }}>{inspectIncident.process_name}</strong>
+                  <span style={{ color: 'var(--text-secondary)' }}>Process:</span>{' '}
+                  <strong style={{ color: 'var(--text-primary)' }}>{inspectIncident.process_name}</strong>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Environment:</span>{' '}
-                  <strong style={{ color: '#f1f5f9' }}>{inspectIncident.environment}</strong>
+                  <span style={{ color: 'var(--text-secondary)' }}>Environment:</span>{' '}
+                  <strong style={{ color: 'var(--text-primary)' }}>{inspectIncident.environment}</strong>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>CPU Usage:</span>{' '}
-                  <strong style={{ color: '#f1f5f9' }}>{inspectIncident.cpu_usage}%</strong>
+                  <span style={{ color: 'var(--text-secondary)' }}>CPU Usage:</span>{' '}
+                  <strong style={{ color: 'var(--text-primary)' }}>{inspectIncident.cpu_usage}%</strong>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Memory Usage:</span>{' '}
-                  <strong style={{ color: '#f1f5f9' }}>{inspectIncident.memory_usage}%</strong>
+                  <span style={{ color: 'var(--text-secondary)' }}>Memory:</span>{' '}
+                  <strong style={{ color: 'var(--text-primary)' }}>{inspectIncident.memory_usage}%</strong>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <span style={{ color: '#64748b' }}>Destination:</span>{' '}
-                  <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Destination:</span>{' '}
+                  <strong style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>
                     {inspectIncident.network_destination || 'None (Internal host loop)'}
                   </strong>
                 </div>
@@ -1033,16 +1069,16 @@ export function Incidents() {
             {/* SOC Notes Thread */}
             <div
               style={{
-                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                paddingTop: '16px',
+                borderTop: '1px solid var(--border)',
+                paddingTop: '14px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={15} style={{ color: '#38bdf8' }} />
-                <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#f8fafc', fontWeight: 600 }}>
+                <FileText size={14} style={{ color: 'var(--primary)' }} />
+                <h4 style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                   SOC Investigation Log ({drawerNotes.length})
                 </h4>
               </div>
@@ -1070,24 +1106,24 @@ export function Incidents() {
               {/* Notes List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
                 {drawerNotes.length === 0 ? (
-                  <p style={{ color: '#64748b', fontSize: '0.75rem', margin: 0 }}>No analyst notes recorded yet.</p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0 }}>No analyst notes recorded yet.</p>
                 ) : (
                   drawerNotes.map(n => (
                     <div
                       key={n.id}
                       style={{
-                        background: 'rgba(15, 23, 42, 0.4)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        borderRadius: '6px',
+                        background: 'var(--surface-elevated)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
                         padding: '8px 10px',
                         fontSize: '0.76rem'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.68rem', marginBottom: '2px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.68rem', marginBottom: '2px' }}>
                         <span>{n.author}</span>
                         <span>{new Date(n.created_at).toLocaleTimeString()}</span>
                       </div>
-                      <div style={{ color: '#e2e8f0', lineHeight: 1.4 }}>{n.note}</div>
+                      <div style={{ color: 'var(--text-primary)', lineHeight: 1.4 }}>{n.note}</div>
                     </div>
                   ))
                 )}
@@ -1108,10 +1144,10 @@ export function Incidents() {
             <div className="modal-header">
               <div>
                 <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Zap size={20} style={{ color: '#06b6d4' }} />
+                  <Zap size={18} style={{ color: 'var(--primary)' }} />
                   Cryptojacking Telemetry Simulation & Ingest Lab
                 </h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   Simulate attack scenarios, preview real-time scoring, and anchor tamper-proof proof on Ethereum.
                 </p>
               </div>
@@ -1121,8 +1157,8 @@ export function Incidents() {
             <div className="modal-body">
               {/* Presets Quick Selector */}
               <div style={{ marginBottom: '18px' }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
-                  ⚡ Quick Scenario Presets:
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                  Quick Scenario Presets:
                 </span>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {SIMULATION_PRESETS.map(preset => (
@@ -1137,8 +1173,8 @@ export function Incidents() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
-                        borderColor: reportForm.process_name === preset.data.process_name ? '#06b6d4' : undefined,
-                        background: reportForm.process_name === preset.data.process_name ? 'rgba(6, 182, 212, 0.1)' : undefined
+                        borderColor: reportForm.process_name === preset.data.process_name ? 'var(--primary)' : undefined,
+                        background: reportForm.process_name === preset.data.process_name ? 'var(--surface-elevated)' : undefined
                       }}
                     >
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: preset.badgeColor }} />
@@ -1255,24 +1291,24 @@ export function Incidents() {
                     style={{
                       marginTop: '20px',
                       padding: '14px 18px',
-                      background: livePreviewScore.suspicious ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                      border: `1px solid ${livePreviewScore.suspicious ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
-                      borderRadius: '10px'
+                      background: 'var(--surface-elevated)',
+                      border: `1px solid ${livePreviewScore.suspicious ? 'var(--critical)' : 'var(--success)'}`,
+                      borderRadius: 'var(--radius)'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {livePreviewScore.suspicious ? <AlertTriangle size={18} color="#f87171" /> : <CheckCircle size={18} color="#34d399" />}
-                        <strong style={{ color: livePreviewScore.suspicious ? '#fca5a5' : '#6ee7b7' }}>
+                        {livePreviewScore.suspicious ? <AlertTriangle size={18} color="var(--critical)" /> : <CheckCircle size={18} color="var(--success)" />}
+                        <strong style={{ color: livePreviewScore.suspicious ? 'var(--critical)' : 'var(--success)' }}>
                           {livePreviewScore.suspicious ? 'SUSPICIOUS CRYPTOJACKING TELEMETRY' : 'NOMINAL WORKLOAD PROFILE'}
                         </strong>
                       </div>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: livePreviewScore.suspicious ? '#f87171' : '#34d399' }}>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: livePreviewScore.suspicious ? 'var(--critical)' : 'var(--success)' }}>
                         {livePreviewScore.risk_score?.score ?? 0} / 100 ({livePreviewScore.risk_score?.severity ?? 'LOW'})
                       </span>
                     </div>
 
-                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#94a3b8' }}>
+                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                       Explainable Factors:{' '}
                       {livePreviewScore.reasons?.join('; ') || 'Telemetry within nominal baseline limits'}
                     </div>
